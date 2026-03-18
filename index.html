@@ -1214,7 +1214,7 @@ body{font-family:var(--font-body);color:var(--text-primary);-webkit-font-smoothi
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 <script>
 // Fix: alias the global before it gets overwritten
-const _supabaseLib = window.supabase;
+
 </script>
 <script>
 /* ═══════════════════════════════════════════════════════════════
@@ -1225,7 +1225,7 @@ const _supabaseLib = window.supabase;
 const SUPABASE_URL  = 'https://SEU-PROJECTO.supabase.co';
 const SUPABASE_KEY  = 'SUA-CHAVE-ANONIMA-PUBLICA';
 
-const supabase = _supabaseLib.createClient(SUPABASE_URL, SUPABASE_KEY);
+const _db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 /* ───── App State ───── */
 let currentUser   = null;
@@ -1243,7 +1243,7 @@ let currentMsgId  = null;
 /* ═══ INIT ═══ */
 window.addEventListener('DOMContentLoaded', async () => {
   setTimeout(async () => {
-    const { data: { session } } = await supabase.auth.getSession();
+    const { data: { session } } = await _db.auth.getSession();
     if (session) {
       currentUser = session.user;
       await loadProfile();
@@ -1253,7 +1253,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     }
   }, 3000); // splash duration
 
-  supabase.auth.onAuthStateChange(async (event, session) => {
+  _db.auth.onAuthStateChange(async (event, session) => {
     if (event === 'SIGNED_IN' && session) {
       currentUser = session.user;
       await loadProfile();
@@ -1337,7 +1337,7 @@ async function doLogin() {
   const pass  = document.getElementById('loginPass').value;
   if (!email || !pass) { toast('Preencha todos os campos','error'); return; }
   showLoading(true);
-  const { data, error } = await supabase.auth.signInWithPassword({ email, password: pass });
+  const { data, error } = await _db.auth.signInWithPassword({ email, password: pass });
   showLoading(false);
   if (error) { toast(error.message, 'error'); return; }
   // loadProfile and enterApp handled by onAuthStateChange
@@ -1365,7 +1365,7 @@ async function doRegister() {
     .from('companies').insert([{ name: company, nif, email, phone, country }]).select().single();
   if (compErr) { showLoading(false); toast('Erro ao criar empresa: ' + compErr.message, 'error'); return; }
 
-  const { data, error } = await supabase.auth.signUp({
+  const { data, error } = await _db.auth.signUp({
     email, password: pass,
     options: { data: { full_name: name, role: 'master' } }
   });
@@ -1373,7 +1373,7 @@ async function doRegister() {
   if (error) { toast(error.message, 'error'); return; }
 
   // Update profile with company and role
-  await supabase.from('profiles')
+  await _db.from('profiles')
     .update({ full_name: name, phone, company_id: compData.id, role: 'master' })
     .eq('email', email);
 
@@ -1384,7 +1384,7 @@ async function doRegister() {
 async function doForgot() {
   const email = document.getElementById('forgotEmail').value.trim();
   if (!email) { toast('Introduza o seu email', 'error'); return; }
-  const { error } = await supabase.auth.resetPasswordForEmail(email);
+  const { error } = await _db.auth.resetPasswordForEmail(email);
   if (error) { toast(error.message, 'error'); return; }
   toast('Link enviado para o email!', 'success');
   showPage('page-login');
@@ -1392,20 +1392,20 @@ async function doForgot() {
 
 function confirmLogout() {
   showConfirm('Terminar Sessão', 'Deseja realmente sair da sua conta?', async () => {
-    await supabase.auth.signOut();
+    await _db.auth.signOut();
   });
 }
 
 /* ═══ PROJECTS ═══ */
 async function loadProjects() {
   showLoading(true);
-  let query = supabase.from('projects').select('*').order('created_at', { ascending: false });
+  let query = _db.from('projects').select('*').order('created_at', { ascending: false });
   if (currentProfile?.role !== 'master') {
     const { data: memberProjs } = await supabase
       .from('project_members').select('project_id').eq('user_id', currentUser.id);
     const ids = (memberProjs || []).map(m => m.project_id);
     const compId = currentProfile?.company_id;
-    query = supabase.from('projects').select('*')
+    query = _db.from('projects').select('*')
       .or(`company_id.eq.${compId},id.in.(${ids.join(',') || 'null'})`)
       .order('created_at', { ascending: false });
   }
@@ -1434,8 +1434,8 @@ function renderProjectGrid(projects) {
 
 async function openProject(projectId) {
   showLoading(true);
-  const { data: proj } = await supabase.from('projects').select('*, companies(*)').eq('id', projectId).single();
-  const { data: fps } = await supabase.from('floor_plans').select('*').eq('project_id', projectId);
+  const { data: proj } = await _db.from('projects').select('*, companies(*)').eq('id', projectId).single();
+  const { data: fps } = await _db.from('floor_plans').select('*').eq('project_id', projectId);
   showLoading(false);
   currentProject = proj;
   document.getElementById('projDetailTitle').textContent = 'Projecto';
@@ -1480,7 +1480,7 @@ function selectFloorPlan(fpId, btn) {
   });
   btn.classList.add('active-mode'); btn.style.background = 'var(--accent-purple)';
   // Find FP in currentProject's fps — reload
-  supabase.from('floor_plans').select('*').eq('id', fpId).single().then(({ data }) => {
+  _db.from('floor_plans').select('*').eq('id', fpId).single().then(({ data }) => {
     currentFP = data;
     const canEdit = ['master','admin'].includes(currentProfile?.role);
     renderFloorPlanBuilder(data, canEdit);
@@ -1649,7 +1649,7 @@ async function numStands(fpId) {
   });
 
   // Save to DB
-  const { error } = await supabase.from('floor_plans')
+  const { error } = await _db.from('floor_plans')
     .update({ stands_data: standsData, grid_data: gridData }).eq('id', fpId);
   if (error) { toast('Erro: ' + error.message, 'error'); return; }
   toast('Stands numeradas!', 'success');
@@ -1657,7 +1657,7 @@ async function numStands(fpId) {
 
   // Upsert stands table
   for (const s of standsData) {
-    await supabase.from('stands').upsert({
+    await _db.from('stands').upsert({
       floor_plan_id: fpId, number: s.number, cells: s.cells, status: 'available'
     }, { onConflict: 'floor_plan_id,number' });
   }
@@ -1666,7 +1666,7 @@ async function numStands(fpId) {
 
 async function saveFloorPlan(fpId) {
   const gridData = getGridDataFromDOM();
-  const { error } = await supabase.from('floor_plans')
+  const { error } = await _db.from('floor_plans')
     .update({ grid_data: gridData, confirmed: true }).eq('id', fpId);
   if (error) { toast('Erro: ' + error.message, 'error'); return; }
   toast('Planta guardada!', 'success');
@@ -1674,7 +1674,7 @@ async function saveFloorPlan(fpId) {
 }
 
 async function loadStandCounts(fp) {
-  const { data: stands } = await supabase.from('stands').select('status').eq('floor_plan_id', fp.id);
+  const { data: stands } = await _db.from('stands').select('status').eq('floor_plan_id', fp.id);
   if (!stands) return;
   const free = stands.filter(s => s.status === 'available').length;
   const rented = stands.filter(s => s.status === 'rented').length;
@@ -1686,7 +1686,7 @@ async function loadStandCounts(fp) {
 
 async function clickStand(fpId, r, c) {
   // Find which stand this cell belongs to
-  const { data: fp } = await supabase.from('floor_plans').select('*').eq('id', fpId).single();
+  const { data: fp } = await _db.from('floor_plans').select('*').eq('id', fpId).single();
   if (!fp) return;
   const standsData = fp.stands_data || [];
   const stand = standsData.find(s => s.cells.some(cell => cell.row === r && cell.col === c));
@@ -1796,7 +1796,7 @@ async function saveRental(standId, standNumber) {
   if (!/\S+@\S+\.\S+/.test(email)) { toast('Email inválido', 'error'); return; }
 
   showLoading(true);
-  const { data: rental, error } = await supabase.from('rentals').insert([{
+  const { data: rental, error } = await _db.from('rentals').insert([{
     stand_id: standId, company_name: company, nif, email, phone, country, notes,
     created_by: currentUser.id, status: 'active'
   }]).select().single();
@@ -1804,7 +1804,7 @@ async function saveRental(standId, standNumber) {
   if (error) { showLoading(false); toast('Erro: ' + error.message, 'error'); return; }
 
   // Update stand status
-  await supabase.from('stands').update({ status: 'rented' }).eq('id', standId);
+  await _db.from('stands').update({ status: 'rented' }).eq('id', standId);
 
   // Upload documents
   const files = document.getElementById('docsInput')?.files;
@@ -1826,8 +1826,8 @@ async function saveRental(standId, standNumber) {
 async function cancelRental(rentalId, standId, standNumber) {
   showConfirm('Cancelar Aluguel', `Deseja realmente cancelar o aluguel da Stand ${standNumber}?`, async () => {
     showLoading(true);
-    await supabase.from('rentals').update({ status: 'cancelled', cancelled_by: currentUser.id, cancelled_at: new Date().toISOString() }).eq('id', rentalId);
-    await supabase.from('stands').update({ status: 'available' }).eq('id', standId);
+    await _db.from('rentals').update({ status: 'cancelled', cancelled_by: currentUser.id, cancelled_at: new Date().toISOString() }).eq('id', rentalId);
+    await _db.from('stands').update({ status: 'available' }).eq('id', standId);
     showLoading(false);
     toast('Aluguel cancelado', 'info');
     await logActivity('Cancelou aluguel', 'rental', rentalId, currentProject?.id, { stand: standNumber });
@@ -1848,10 +1848,10 @@ async function addDocsToRental(input, rentalId) {
 async function uploadRentalDoc(file, rentalId) {
   const ext = file.name.split('.').pop();
   const path = `${rentalId}/${Date.now()}.${ext}`;
-  const { data: upData, error: upErr } = await supabase.storage.from('documents').upload(path, file);
+  const { data: upData, error: upErr } = await _db.storage.from('documents').upload(path, file);
   if (upErr) { toast('Erro ao carregar ficheiro: ' + upErr.message, 'error'); return; }
-  const { data: { publicUrl } } = supabase.storage.from('documents').getPublicUrl(path);
-  await supabase.from('rental_documents').insert([{
+  const { data: { publicUrl } } = _db.storage.from('documents').getPublicUrl(path);
+  await _db.from('rental_documents').insert([{
     rental_id: rentalId, file_name: file.name, file_url: publicUrl,
     file_type: file.type, uploaded_by: currentUser.id
   }]);
@@ -1876,17 +1876,17 @@ async function saveProject() {
   if (logoFile) {
     const ext = logoFile.name.split('.').pop();
     const path = `proj-${Date.now()}.${ext}`;
-    await supabase.storage.from('project-images').upload(path, logoFile);
-    const { data: { publicUrl } } = supabase.storage.from('project-images').getPublicUrl(path);
+    await _db.storage.from('project-images').upload(path, logoFile);
+    const { data: { publicUrl } } = _db.storage.from('project-images').getPublicUrl(path);
     projData.image_url = publicUrl;
   }
 
-  const { data: proj, error } = await supabase.from('projects').insert([projData]).select().single();
+  const { data: proj, error } = await _db.from('projects').insert([projData]).select().single();
   if (error) { showLoading(false); toast('Erro: ' + error.message, 'error'); return; }
 
   // Save floor plans
   for (const fp of tempFPs) {
-    await supabase.from('floor_plans').insert([{
+    await _db.from('floor_plans').insert([{
       project_id: proj.id, name: fp.name, width_m: fp.width, length_m: fp.length
     }]);
   }
@@ -1912,7 +1912,7 @@ async function addFloorPlan() {
   if (window._fpTargetProject) {
     // Save directly to existing project
     showLoading(true);
-    const { data, error } = await supabase.from('floor_plans').insert([{
+    const { data, error } = await _db.from('floor_plans').insert([{
       project_id: window._fpTargetProject, name, width_m: w, length_m: l
     }]).select().single();
     showLoading(false);
@@ -2058,7 +2058,7 @@ async function saveRentalEdits(rentalId) {
     country:      document.getElementById('rdCountry')?.value.trim(),
   };
   showLoading(true);
-  const { error } = await supabase.from('rentals').update(data).eq('id', rentalId);
+  const { error } = await _db.from('rentals').update(data).eq('id', rentalId);
   showLoading(false);
   if (error) { toast('Erro: ' + error.message, 'error'); return; }
   toast('Informações actualizadas!', 'success');
@@ -2067,8 +2067,8 @@ async function saveRentalEdits(rentalId) {
 
 async function cancelRentalFromList(rentalId, standId, standNumber) {
   showConfirm('Cancelar Aluguel', `Confirmar cancelamento do aluguel da Stand ${standNumber}?`, async () => {
-    await supabase.from('rentals').update({ status: 'cancelled', cancelled_by: currentUser.id, cancelled_at: new Date().toISOString() }).eq('id', rentalId);
-    await supabase.from('stands').update({ status: 'available' }).eq('id', standId);
+    await _db.from('rentals').update({ status: 'cancelled', cancelled_by: currentUser.id, cancelled_at: new Date().toISOString() }).eq('id', rentalId);
+    await _db.from('stands').update({ status: 'available' }).eq('id', standId);
     toast('Aluguel cancelado', 'info');
     await logActivity('Cancelou aluguel', 'rental', rentalId, null, { stand: standNumber });
     goBack();
@@ -2078,14 +2078,14 @@ async function cancelRentalFromList(rentalId, standId, standNumber) {
 
 async function deleteDoc(docId, rentalId) {
   showConfirm('Eliminar Documento', 'Tem a certeza que deseja eliminar este documento?', async () => {
-    await supabase.from('rental_documents').delete().eq('id', docId);
+    await _db.from('rental_documents').delete().eq('id', docId);
     toast('Documento eliminado', 'info');
     openRentalDetail(rentalId);
   });
 }
 
 async function requestChange(rentalId) {
-  await supabase.from('messages').insert([{
+  await _db.from('messages').insert([{
     from_user_id: currentUser.id,
     body: `Solicitação de alteração para o aluguel ID: ${rentalId}`,
     subject: 'Solicitação de Alteração'
@@ -2119,9 +2119,9 @@ async function loadMessages() {
 
 async function openMessageDetail(msgId) {
   currentMsgId = msgId;
-  const { data: msg } = await supabase.from('messages').select('*, profiles!from_user_id(full_name, avatar_url)').eq('id', msgId).single();
+  const { data: msg } = await _db.from('messages').select('*, profiles!from_user_id(full_name, avatar_url)').eq('id', msgId).single();
   // Mark as read
-  await supabase.from('messages').update({ read: true }).eq('id', msgId);
+  await _db.from('messages').update({ read: true }).eq('id', msgId);
 
   const el = document.getElementById('msgDetailContent');
   el.innerHTML = `
@@ -2142,8 +2142,8 @@ async function openMessageDetail(msgId) {
 async function sendReply() {
   const body = document.getElementById('replyInput').value.trim();
   if (!body) return;
-  const { data: orig } = await supabase.from('messages').select('from_user_id').eq('id', currentMsgId).single();
-  await supabase.from('messages').insert([{
+  const { data: orig } = await _db.from('messages').select('from_user_id').eq('id', currentMsgId).single();
+  await _db.from('messages').insert([{
     from_user_id: currentUser.id, to_user_id: orig?.from_user_id,
     body, parent_id: currentMsgId
   }]);
@@ -2153,7 +2153,7 @@ async function sendReply() {
 
 async function openNewMessage() {
   // Populate user list
-  const { data: users } = await supabase.from('profiles').select('id, full_name').eq('active', true);
+  const { data: users } = await _db.from('profiles').select('id, full_name').eq('active', true);
   const sel = document.getElementById('msgToUser');
   sel.innerHTML = '<option value="">Todos (broadcast)</option>' +
     (users || []).filter(u => u.id !== currentUser.id).map(u =>
@@ -2166,7 +2166,7 @@ async function sendNewMessage() {
   const subj = document.getElementById('msgSubject').value.trim();
   const body = document.getElementById('msgBody').value.trim();
   if (!body) { toast('Escreva uma mensagem', 'error'); return; }
-  await supabase.from('messages').insert([{ from_user_id: currentUser.id, to_user_id: toId, subject: subj, body }]);
+  await _db.from('messages').insert([{ from_user_id: currentUser.id, to_user_id: toId, subject: subj, body }]);
   closePopup();
   toast('Mensagem enviada!', 'success');
   loadMessages();
@@ -2174,7 +2174,7 @@ async function sendNewMessage() {
 
 /* ═══ NOTIFICATIONS ═══ */
 async function loadNotifications() {
-  const { data } = await supabase.from('notifications').select('*')
+  const { data } = await _db.from('notifications').select('*')
     .eq('user_id', currentUser.id).order('created_at', { ascending: false });
   const el = document.getElementById('notificationsList');
   if (!data?.length) { el.innerHTML = `<p style="color:var(--text-muted);text-align:center;margin-top:40px">Sem notificações.</p>`; return; }
@@ -2190,21 +2190,21 @@ async function loadNotifications() {
 }
 
 async function markNotifRead(id) {
-  await supabase.from('notifications').update({ read: true }).eq('id', id);
+  await _db.from('notifications').update({ read: true }).eq('id', id);
   loadBadges();
 }
 
 async function loadBadges() {
-  const { count: nCount } = await supabase.from('notifications').select('*', { count: 'exact', head: true }).eq('user_id', currentUser.id).eq('read', false);
-  const { count: mCount } = await supabase.from('messages').select('*', { count: 'exact', head: true }).eq('to_user_id', currentUser.id).eq('read', false);
+  const { count: nCount } = await _db.from('notifications').select('*', { count: 'exact', head: true }).eq('user_id', currentUser.id).eq('read', false);
+  const { count: mCount } = await _db.from('messages').select('*', { count: 'exact', head: true }).eq('to_user_id', currentUser.id).eq('read', false);
   document.getElementById('notifDot').classList.toggle('show', nCount > 0);
   document.getElementById('msgDot').classList.toggle('show', mCount > 0);
 }
 
 async function sendNotificationToAdmins(message) {
-  const { data: admins } = await supabase.from('profiles').select('id').in('role', ['master','admin']);
+  const { data: admins } = await _db.from('profiles').select('id').in('role', ['master','admin']);
   if (!admins) return;
-  await supabase.from('notifications').insert(
+  await _db.from('notifications').insert(
     admins.map(a => ({ user_id: a.id, title: 'Novo Aluguel', message, type: 'success' }))
   );
 }
@@ -2213,7 +2213,7 @@ async function sendNotificationToAdmins(message) {
 async function loadUsers() {
   showLoading(true);
   const filter = document.getElementById('userFilterStatus')?.value || 'all';
-  let query = supabase.from('profiles').select('*, companies(name)').order('created_at', { ascending: false });
+  let query = _db.from('profiles').select('*, companies(name)').order('created_at', { ascending: false });
   if (filter === 'active') query = query.eq('active', true);
   else if (filter === 'inactive') query = query.eq('active', false);
   const { data: users } = await query;
@@ -2241,7 +2241,7 @@ async function loadUsers() {
 }
 
 async function toggleUserActive(userId, current) {
-  await supabase.from('profiles').update({ active: !current }).eq('id', userId);
+  await _db.from('profiles').update({ active: !current }).eq('id', userId);
   toast(current ? 'Utilizador desativado' : 'Utilizador ativado', 'info');
   loadUsers();
 }
@@ -2270,8 +2270,8 @@ async function viewUserActivity(userId, name) {
 async function openNomearUser() {
   showLoading(true);
   const compId = currentProfile?.company_id || currentProject?.company_id;
-  const { data: users } = await supabase.from('profiles').select('*').eq('company_id', compId).neq('id', currentUser.id);
-  const { data: members } = await supabase.from('project_members').select('*').eq('project_id', currentProject.id);
+  const { data: users } = await _db.from('profiles').select('*').eq('company_id', compId).neq('id', currentUser.id);
+  const { data: members } = await _db.from('project_members').select('*').eq('project_id', currentProject.id);
   showLoading(false);
   allUsers = users || [];
   const memberMap = {};
@@ -2309,7 +2309,7 @@ async function saveProjectMembers() {
   for (const btn of btns) {
     const uid = btn.dataset.uid;
     const role = btn.dataset.role;
-    await supabase.from('project_members').upsert({
+    await _db.from('project_members').upsert({
       project_id: currentProject.id, user_id: uid, role
     }, { onConflict: 'project_id,user_id' });
   }
@@ -2347,9 +2347,9 @@ async function loadAccountPage() {
   }
 
   // Projects
-  let projQuery = supabase.from('projects').select('name,id').order('created_at', { ascending: false });
+  let projQuery = _db.from('projects').select('name,id').order('created_at', { ascending: false });
   if (p.role !== 'master') {
-    const { data: memb } = await supabase.from('project_members').select('project_id').eq('user_id', currentUser.id);
+    const { data: memb } = await _db.from('project_members').select('project_id').eq('user_id', currentUser.id);
     const ids = (memb || []).map(m => m.project_id);
     if (ids.length) projQuery = projQuery.in('id', ids);
   } else {
@@ -2372,7 +2372,7 @@ async function saveAccount() {
   const phone = document.getElementById('accPhone').value.trim();
   if (!name) { toast('Introduza o seu nome', 'error'); return; }
   showLoading(true);
-  const { error } = await supabase.from('profiles').update({ full_name: name, phone }).eq('id', currentUser.id);
+  const { error } = await _db.from('profiles').update({ full_name: name, phone }).eq('id', currentUser.id);
   showLoading(false);
   if (error) { toast('Erro: ' + error.message, 'error'); return; }
   currentProfile.full_name = name;
@@ -2386,9 +2386,9 @@ async function uploadAvatar(input) {
   showLoading(true);
   const ext = file.name.split('.').pop();
   const path = `avatar-${currentUser.id}.${ext}`;
-  await supabase.storage.from('avatars').upload(path, file, { upsert: true });
-  const { data: { publicUrl } } = supabase.storage.from('avatars').getPublicUrl(path);
-  await supabase.from('profiles').update({ avatar_url: publicUrl }).eq('id', currentUser.id);
+  await _db.storage.from('avatars').upload(path, file, { upsert: true });
+  const { data: { publicUrl } } = _db.storage.from('avatars').getPublicUrl(path);
+  await _db.from('profiles').update({ avatar_url: publicUrl }).eq('id', currentUser.id);
   currentProfile.avatar_url = publicUrl;
   showLoading(false);
   toast('Foto actualizada!', 'success');
@@ -2401,9 +2401,9 @@ async function updateProjImage(input) {
   showLoading(true);
   const ext = file.name.split('.').pop();
   const path = `proj-${currentProject.id}.${ext}`;
-  await supabase.storage.from('project-images').upload(path, file, { upsert: true });
-  const { data: { publicUrl } } = supabase.storage.from('project-images').getPublicUrl(path);
-  await supabase.from('projects').update({ image_url: publicUrl }).eq('id', currentProject.id);
+  await _db.storage.from('project-images').upload(path, file, { upsert: true });
+  const { data: { publicUrl } } = _db.storage.from('project-images').getPublicUrl(path);
+  await _db.from('projects').update({ image_url: publicUrl }).eq('id', currentProject.id);
   document.getElementById('projDetailImg').src = publicUrl;
   document.getElementById('projDetailImg').style.display = 'block';
   showLoading(false);
@@ -2423,7 +2423,7 @@ async function createUser() {
   if (pass.length < 6) { toast('Senha mínima: 6 caracteres', 'error'); return; }
 
   showLoading(true);
-  const { data, error } = await supabase.auth.admin.createUser({
+  const { data, error } = await _db.auth.admin.createUser({
     email, password: pass,
     user_metadata: { full_name: name, role },
     email_confirm: true
@@ -2431,14 +2431,14 @@ async function createUser() {
 
   // Fallback: use signUp (only works without email confirmation)
   if (error) {
-    const { data: d2, error: e2 } = await supabase.auth.signUp({
+    const { data: d2, error: e2 } = await _db.auth.signUp({
       email, password: pass, options: { data: { full_name: name, role } }
     });
     if (e2) { showLoading(false); toast('Erro: ' + e2.message, 'error'); return; }
   }
 
   // Update profile
-  await supabase.from('profiles').update({ full_name: name, phone, role, company_id: currentProfile?.company_id }).eq('email', email);
+  await _db.from('profiles').update({ full_name: name, phone, role, company_id: currentProfile?.company_id }).eq('email', email);
 
   showLoading(false);
   closePopup();
@@ -2457,7 +2457,7 @@ async function changePassword() {
   if (p1 !== p2) { toast('As senhas não coincidem', 'error'); return; }
   if (p1.length < 6) { toast('Mínimo 6 caracteres', 'error'); return; }
   showLoading(true);
-  const { error } = await supabase.auth.updateUser({ password: p1 });
+  const { error } = await _db.auth.updateUser({ password: p1 });
   showLoading(false);
   if (error) { toast('Erro: ' + error.message, 'error'); return; }
   closePopup();
@@ -2467,7 +2467,7 @@ async function changePassword() {
 /* ═══ ACTIVITY LOG ═══ */
 async function logActivity(action, entityType, entityId, projectId, details = {}) {
   try {
-    await supabase.rpc('log_activity', {
+    await _db.rpc('log_activity', {
       p_action: action,
       p_entity_type: entityType,
       p_entity_id: entityId,
