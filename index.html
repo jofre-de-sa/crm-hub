@@ -527,8 +527,8 @@ body{font-family:var(--font-body);color:var(--text-primary);-webkit-font-smoothi
   /* Desktop: wider modals */
   .stand-popup { max-width: 440px; }
 
-  /* Login page centred */
-  #page-login, #page-register, #page-forgot, #page-splash {
+  /* Login/register pages centred when active */
+  #page-login.active, #page-register.active, #page-forgot.active, #page-splash.active {
     display: flex;
     flex-direction: column;
     justify-content: center;
@@ -1323,7 +1323,18 @@ body{font-family:var(--font-body);color:var(--text-primary);-webkit-font-smoothi
 const SUPABASE_URL  = 'https://dqudfksdvyidimjjxpgq.supabase.co';
 const SUPABASE_KEY  = 'sb_publishable_RhMLVVFehGzGn5HUYuzOLA_Zgsin-5U';
 
-const _db = (window.supabase?.createClient || window.supabase?.default?.createClient || supabaseJs?.createClient)(SUPABASE_URL, SUPABASE_KEY);
+// Supabase client — works with both eyJ... (JWT anon) and sb_publishable_ keys
+const _db = (() => {
+  try {
+    const client = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
+      auth: { persistSession: true, autoRefreshToken: true }
+    });
+    return client;
+  } catch(e) {
+    console.error('Supabase init error:', e);
+    return null;
+  }
+})();
 
 /* ───── App State ───── */
 let currentUser   = null;
@@ -1340,16 +1351,25 @@ let currentMsgId  = null;
 
 /* ═══ INIT ═══ */
 window.addEventListener('DOMContentLoaded', async () => {
+  if (!_db) {
+    setTimeout(() => showPage('page-login'), 3000);
+    return;
+  }
   setTimeout(async () => {
-    const { data: { session } } = await _db.auth.getSession();
-    if (session) {
-      currentUser = session.user;
-      await loadProfile();
-      enterApp();
-    } else {
+    try {
+      const { data: { session } } = await _db.auth.getSession();
+      if (session) {
+        currentUser = session.user;
+        await loadProfile();
+        enterApp();
+      } else {
+        showPage('page-login');
+      }
+    } catch(e) {
+      console.error('Session error:', e);
       showPage('page-login');
     }
-  }, 3000); // splash duration
+  }, 2500);
 
   _db.auth.onAuthStateChange(async (event, session) => {
     if (event === 'SIGNED_IN' && session) {
@@ -1358,6 +1378,7 @@ window.addEventListener('DOMContentLoaded', async () => {
       enterApp();
     } else if (event === 'SIGNED_OUT') {
       currentUser = null; currentProfile = null;
+      pageHistory = [];
       showPage('page-login');
       document.getElementById('bottomNav').style.display = 'none';
     }
@@ -1542,14 +1563,20 @@ async function loadProjects() {
 
   } else {
     // Collaborator: only sees projects they've been explicitly added to
-    // (which must belong to the same company as their admin)
     const { data: memberProjs } = await _db
       .from('project_members').select('project_id').eq('user_id', currentUser.id);
     const ids = (memberProjs || []).map(m => m.project_id);
     if (ids.length) {
       const { data } = await _db.from('projects').select('*')
-        .in('id', ids).eq('company_id', compId).order('created_at', { ascending: false });
+        .in('id', ids).order('created_at', { ascending: false });
       projects = data || [];
+    } else {
+      // Fallback: show all projects of same company if no explicit membership
+      if (compId) {
+        const { data } = await _db.from('projects').select('*')
+          .eq('company_id', compId).order('created_at', { ascending: false });
+        projects = data || [];
+      }
     }
   }
 
@@ -2718,8 +2745,15 @@ function showConfirm(title, msg, cb) {
   confirmCallback = cb;
   document.getElementById('confirmDialog').style.display = 'flex';
 }
-function confirmOk() { document.getElementById('confirmDialog').style.display = 'none'; if (confirmCallback) confirmCallback(); confirmCallback = null; }
-function confirmCancel() { document.getElementById('confirmDialog').style.display = 'none'; confirmCallback = null; }
+window.confirmOk = function() {
+  document.getElementById('confirmDialog').style.display = 'none';
+  if (confirmCallback) { confirmCallback(); }
+  confirmCallback = null;
+};
+window.confirmCancel = function() {
+  document.getElementById('confirmDialog').style.display = 'none';
+  confirmCallback = null;
+};
 
 function showLoading(show) { document.getElementById('loadingFull').style.display = show ? 'flex' : 'none'; }
 
