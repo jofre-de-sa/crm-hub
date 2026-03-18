@@ -1,0 +1,2585 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0"/>
+<title>CRM HUB – Plotting Engage</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;800&family=Barlow:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet"/>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet"/>
+<style>
+/* ═══════════════════════════════════════════
+   CSS VARIABLES & RESET
+═══════════════════════════════════════════ */
+:root{
+  --bg-deep:#071235;
+  --bg-mid:#0d2060;
+  --bg-card:#112578;
+  --bg-card2:#0a1a55;
+  --bg-input:#0c1e6b;
+  --bg-dark-input:#060f38;
+  --accent-red:#e81416;
+  --accent-green:#28a745;
+  --accent-purple:#6832e3;
+  --text-primary:#ffffff;
+  --text-muted:#a0b0d0;
+  --text-label:#8899bb;
+  --border:#1e3580;
+  --shadow:0 8px 32px rgba(0,0,0,.4);
+  --font-display:'Barlow Condensed',sans-serif;
+  --font-body:'Barlow',sans-serif;
+  --nav-h:72px;
+  --transition:.22s ease;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{height:100%;overflow:hidden;background:var(--bg-deep)}
+body{font-family:var(--font-body);color:var(--text-primary);-webkit-font-smoothing:antialiased}
+
+/* ═══════════════════════════════════════════
+   SCROLLABLE PAGES
+═══════════════════════════════════════════ */
+.page{
+  display:none;position:absolute;inset:0;
+  background:linear-gradient(160deg,var(--bg-mid) 0%,var(--bg-deep) 60%,#04091f 100%);
+  overflow-y:auto;overflow-x:hidden;
+  padding-bottom:calc(var(--nav-h) + 20px);
+}
+.page.active{display:block}
+.page.no-nav{padding-bottom:0}
+
+/* ═══════════════════════════════════════════
+   HEADER
+═══════════════════════════════════════════ */
+.app-header{
+  display:flex;align-items:flex-start;justify-content:space-between;
+  padding:24px 20px 16px;
+  position:sticky;top:0;z-index:100;
+  background:linear-gradient(to bottom,rgba(13,32,96,.98) 80%,transparent);
+  backdrop-filter:blur(8px);
+}
+.logo-wrap{display:flex;align-items:center;gap:10px}
+.logo-box{
+  background:linear-gradient(135deg,#e81416,#c00);
+  border:3px solid #e81416;
+  border-radius:4px;padding:4px 8px;
+  font-family:var(--font-display);font-weight:800;font-size:22px;
+  color:#fff;line-height:1;letter-spacing:-.5px;
+}
+.logo-box span{display:block}
+.logo-text{font-family:var(--font-body);font-size:11px;font-weight:300;color:var(--text-muted);line-height:1.3;max-width:130px}
+.header-user{text-align:center;cursor:pointer}
+.avatar-wrap{position:relative;display:inline-block}
+.avatar-img{
+  width:52px;height:52px;border-radius:50%;border:2px solid var(--accent-purple);
+  object-fit:cover;background:var(--bg-card);
+  display:flex;align-items:center;justify-content:center;font-size:22px;
+}
+.header-username{font-weight:700;font-size:13px;margin-top:4px}
+.header-actions{display:flex;gap:6px;margin-top:4px;justify-content:center}
+.hdr-btn{
+  width:26px;height:26px;border-radius:50%;border:2px solid var(--accent-purple);
+  background:transparent;cursor:pointer;display:flex;align-items:center;justify-content:center;
+  font-size:12px;color:var(--text-primary);position:relative;transition:var(--transition);
+}
+.hdr-btn:hover{background:var(--accent-purple)}
+.badge-dot{
+  position:absolute;top:-2px;right:-2px;width:10px;height:10px;
+  background:var(--accent-red);border-radius:50%;border:2px solid var(--bg-mid);
+  display:none;
+}
+.badge-dot.show{display:block}
+.hdr-label{font-size:10px;color:var(--text-muted);margin-top:2px}
+
+/* ═══════════════════════════════════════════
+   BOTTOM NAV
+═══════════════════════════════════════════ */
+.bottom-nav{
+  position:fixed;bottom:0;left:0;right:0;height:var(--nav-h);
+  background:linear-gradient(to top,rgba(6,9,40,.99),rgba(8,18,55,.95));
+  border-top:1px solid rgba(255,255,255,.06);
+  display:flex;align-items:center;justify-content:space-around;
+  z-index:200;backdrop-filter:blur(12px);
+}
+.nav-item{
+  display:flex;flex-direction:column;align-items:center;gap:4px;
+  cursor:pointer;padding:8px 14px;border-radius:12px;
+  transition:var(--transition);color:var(--text-muted);
+  border:none;background:transparent;
+}
+.nav-item.active,.nav-item:hover{color:var(--text-primary)}
+.nav-item i{font-size:22px}
+.nav-item span{font-size:10px;font-weight:600;letter-spacing:.5px;text-transform:uppercase}
+.nav-item.active i{color:var(--accent-red)}
+.nav-item.active span{color:var(--text-primary)}
+
+/* ═══════════════════════════════════════════
+   SPLASH
+═══════════════════════════════════════════ */
+#page-splash{
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  background:linear-gradient(160deg,#0d2060 0%,#071235 50%,#030917 100%);
+  animation:fadeOut 1s ease 2.5s forwards;
+}
+.splash-logo-big{
+  font-family:var(--font-display);font-weight:800;font-size:72px;
+  background:linear-gradient(135deg,#e81416,#c00);
+  padding:12px 20px;border:5px solid #e81416;border-radius:6px;
+  color:#fff;line-height:1;margin-bottom:20px;
+  animation:popIn .6s cubic-bezier(.175,.885,.32,1.275) .3s both;
+}
+.splash-logo-big span{display:block}
+.splash-tagline{font-family:var(--font-body);font-size:18px;font-weight:300;
+  color:var(--text-muted);line-height:1.5;text-align:center;
+  animation:fadeUp .5s ease .7s both;}
+@keyframes popIn{from{transform:scale(.5);opacity:0}to{transform:scale(1);opacity:1}}
+@keyframes fadeUp{from{transform:translateY(20px);opacity:0}to{transform:translateY(0);opacity:1}}
+@keyframes fadeOut{to{opacity:0;pointer-events:none}}
+
+/* ═══════════════════════════════════════════
+   FORMS & INPUTS
+═══════════════════════════════════════════ */
+.form-card{
+  background:rgba(12,30,107,.6);border:1px solid rgba(255,255,255,.08);
+  border-radius:16px;padding:28px 22px;margin:0 16px;
+  backdrop-filter:blur(8px);box-shadow:var(--shadow);
+}
+.input-group-crm{
+  display:flex;align-items:center;gap:10px;
+  background:var(--bg-input);border-radius:10px;padding:12px 16px;
+  margin-bottom:12px;border:1px solid var(--border);transition:var(--transition);
+}
+.input-group-crm:focus-within{border-color:var(--accent-purple);box-shadow:0 0 0 3px rgba(104,50,227,.15)}
+.input-group-crm.dark{background:var(--bg-dark-input)}
+.input-group-crm i{color:var(--accent-red);font-size:18px;flex-shrink:0}
+.input-group-crm input,.input-group-crm select{
+  background:transparent;border:none;outline:none;color:var(--text-primary);
+  font-size:15px;font-family:var(--font-body);width:100%;
+}
+.input-group-crm input::placeholder{color:var(--text-label)}
+.input-group-crm select option{background:var(--bg-card2);color:#fff}
+.check-row{display:flex;align-items:center;justify-content:space-between;margin:10px 0 16px}
+.crm-check{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text-muted)}
+.crm-check input[type=checkbox]{accent-color:var(--accent-purple);width:16px;height:16px}
+.forgot{font-size:13px;color:var(--text-muted);text-decoration:none}
+.forgot:hover{color:var(--text-primary)}
+
+.btn-crm{
+  display:block;width:100%;padding:15px;border-radius:12px;
+  font-family:var(--font-display);font-weight:700;font-size:15px;letter-spacing:1px;
+  text-align:center;cursor:pointer;border:none;transition:var(--transition);
+  text-transform:uppercase;
+}
+.btn-primary-crm{background:var(--bg-card);color:#fff}
+.btn-primary-crm:hover{background:var(--accent-purple)}
+.btn-secondary-crm{background:var(--bg-card2);color:#fff;margin-top:8px}
+.btn-secondary-crm:hover{background:#1a3580}
+.btn-green{background:var(--accent-green);color:#fff}
+.btn-green:hover{background:#218838}
+.btn-red{background:var(--accent-red);color:#fff}
+.btn-red:hover{background:#c00}
+.btn-purple{background:var(--accent-purple);color:#fff}
+.btn-purple:hover{background:#5a28c8}
+
+.page-title{
+  font-family:var(--font-display);font-weight:800;font-size:32px;
+  padding:0 20px;margin-bottom:20px;
+}
+.back-btn{
+  padding:0 20px;margin-bottom:6px;background:none;border:none;
+  color:var(--text-muted);font-size:22px;cursor:pointer;display:flex;align-items:center;gap:6px;
+}
+.back-btn:hover{color:#fff}
+
+/* ═══════════════════════════════════════════
+   PROJECT CARDS
+═══════════════════════════════════════════ */
+.section-title{
+  font-family:var(--font-display);font-weight:800;font-size:28px;
+  padding:16px 20px 12px;
+}
+.projects-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;padding:0 16px}
+.proj-card{
+  background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.08);
+  border-radius:14px;aspect-ratio:1;display:flex;flex-direction:column;
+  align-items:center;justify-content:flex-end;padding:10px;cursor:pointer;
+  transition:var(--transition);overflow:hidden;position:relative;
+}
+.proj-card:hover{border-color:var(--accent-purple);background:rgba(104,50,227,.15)}
+.proj-card img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;border-radius:14px;opacity:.8}
+.proj-add-btn{
+  width:28px;height:28px;border-radius:50%;background:var(--accent-purple);
+  display:flex;align-items:center;justify-content:center;font-size:16px;
+  color:#fff;border:none;cursor:pointer;position:absolute;bottom:8px;right:8px;
+  z-index:2;box-shadow:0 2px 8px rgba(0,0,0,.4);
+}
+.proj-name{font-size:11px;font-weight:600;text-align:center;z-index:2;
+  background:rgba(0,0,0,.6);border-radius:6px;padding:2px 6px;margin-top:auto}
+
+/* ═══════════════════════════════════════════
+   USER LIST (Nomear)
+═══════════════════════════════════════════ */
+.user-row{display:flex;align-items:center;gap:12px;margin-bottom:14px}
+.user-avatar{
+  width:50px;height:50px;border-radius:50%;background:var(--bg-card);
+  flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:22px;
+  overflow:hidden;border:2px solid var(--border);
+}
+.user-avatar img{width:100%;height:100%;object-fit:cover}
+.user-input-wrap{flex:1}
+.user-role-label{font-size:11px;color:var(--text-label);margin-top:4px;display:flex;align-items:center;gap:6px}
+.role-toggle{
+  padding:2px 10px;border-radius:20px;font-size:11px;font-weight:600;cursor:pointer;
+  border:1px solid var(--border);background:var(--bg-input);color:var(--text-muted);
+  transition:var(--transition);
+}
+.role-toggle.admin{background:var(--accent-purple);color:#fff;border-color:var(--accent-purple)}
+
+/* ═══════════════════════════════════════════
+   FLOOR PLAN BUILDER
+═══════════════════════════════════════════ */
+.floor-plan-container{
+  padding:0 14px;overflow-x:auto;
+}
+.grid-wrap{
+  display:inline-block;border:2px solid rgba(255,255,255,.15);border-radius:4px;
+  min-width:100%;
+}
+.grid-table{
+  border-collapse:collapse;width:100%;
+}
+.grid-cell{
+  width:30px;height:30px;border:1px solid rgba(255,255,255,.12);
+  cursor:pointer;transition:background .12s;background:var(--bg-card);
+}
+.grid-cell.corridor{background:#fff !important}
+.grid-cell.stand-cell{background:var(--accent-green) !important}
+.grid-cell.stand-rented{background:var(--accent-red) !important}
+.grid-cell.stand-selecting{background:rgba(104,50,227,.7) !important}
+.grid-cell:hover{filter:brightness(1.3)}
+.stand-number-label{
+  font-size:8px;font-weight:700;color:#fff;text-align:center;
+  pointer-events:none;line-height:30px;
+}
+.stand-number-label.dark{color:#1a1a1a}
+.floor-controls{
+  display:flex;flex-direction:column;gap:8px;padding:14px 16px 0;
+}
+.floor-btn{
+  padding:13px;border-radius:30px;text-align:center;cursor:pointer;
+  font-family:var(--font-display);font-weight:700;font-size:14px;
+  letter-spacing:1px;text-transform:uppercase;border:none;
+  background:var(--bg-card);color:#fff;transition:var(--transition);
+}
+.floor-btn.active-mode{background:var(--accent-red) !important}
+.floor-btn.green{background:var(--accent-green)}
+.floor-btn.purple{background:var(--accent-purple)}
+.floor-btn:hover{filter:brightness(1.15)}
+.stands-counter{
+  display:flex;gap:10px;padding:14px 16px;
+}
+.counter-box{
+  flex:1;border-radius:12px;padding:14px;text-align:center;
+  font-family:var(--font-display);
+}
+.counter-box.green{background:var(--accent-green)}
+.counter-box.red{background:var(--accent-red)}
+.counter-box .count{font-size:32px;font-weight:800}
+.counter-box .label{font-size:11px;font-weight:600;letter-spacing:.5px}
+
+/* ═══════════════════════════════════════════
+   STAND POPUP / TOOLTIP
+═══════════════════════════════════════════ */
+.stand-popup{
+  position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);
+  background:rgba(10,15,50,.97);border:1px solid var(--border);
+  border-radius:16px;padding:20px 22px;z-index:500;width:88%;max-width:380px;
+  box-shadow:0 20px 60px rgba(0,0,0,.7);animation:scaleIn .2s ease;
+}
+@keyframes scaleIn{from{transform:translate(-50%,-50%) scale(.85);opacity:0}
+  to{transform:translate(-50%,-50%) scale(1);opacity:1}}
+.popup-overlay{
+  position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:490;
+}
+.stand-tooltip{
+  position:absolute;
+  background:rgba(0,0,0,.88);border-radius:8px;padding:10px 14px;
+  z-index:300;font-size:12px;min-width:160px;
+  animation:fadeUp .15s ease;pointer-events:none;
+}
+
+/* ═══════════════════════════════════════════
+   MESSAGES / NOTIFICATIONS
+═══════════════════════════════════════════ */
+.msg-item{
+  display:flex;align-items:flex-start;gap:12px;padding:14px 0;
+  border-bottom:1px solid rgba(255,255,255,.06);cursor:pointer;
+  transition:var(--transition);
+}
+.msg-item:hover{background:rgba(255,255,255,.03);margin:0 -16px;padding:14px 16px}
+.msg-avatar{
+  width:46px;height:46px;border-radius:50%;overflow:hidden;flex-shrink:0;
+  background:var(--bg-card);display:flex;align-items:center;justify-content:center;
+}
+.msg-avatar img{width:100%;height:100%;object-fit:cover}
+.msg-body{flex:1;min-width:0}
+.msg-name{font-weight:600;font-size:14px}
+.msg-preview{font-size:12px;color:var(--text-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.msg-time{font-size:11px;color:var(--text-label);flex-shrink:0}
+.msg-unread .msg-name::after{content:'';display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--accent-purple);margin-left:6px;vertical-align:middle}
+
+/* ═══════════════════════════════════════════
+   MY LIST
+═══════════════════════════════════════════ */
+.client-card{
+  background:var(--bg-card2);border:1px solid var(--border);
+  border-radius:14px;padding:16px;margin:0 16px 12px;cursor:pointer;
+  transition:var(--transition);display:flex;align-items:center;gap:14px;
+}
+.client-card:hover{border-color:var(--accent-purple);transform:translateX(3px)}
+.client-card .stand-badge{
+  background:var(--accent-green);border-radius:8px;padding:4px 10px;
+  font-family:var(--font-display);font-weight:700;font-size:13px;flex-shrink:0;
+}
+.client-card .stand-badge.rented{background:var(--accent-red)}
+.client-info h6{font-weight:600;font-size:14px;margin-bottom:2px}
+.client-info p{font-size:12px;color:var(--text-muted)}
+
+/* ═══════════════════════════════════════════
+   DOCUMENT UPLOAD
+═══════════════════════════════════════════ */
+.drop-zone{
+  border:2px dashed rgba(255,165,0,.4);border-radius:14px;
+  padding:40px 20px;text-align:center;cursor:pointer;transition:var(--transition);
+  background:rgba(255,165,0,.04);
+}
+.drop-zone:hover,.drop-zone.dragover{border-color:rgba(255,165,0,.8);background:rgba(255,165,0,.08)}
+.drop-zone i{font-size:40px;color:rgba(255,165,0,.6);display:block;margin-bottom:12px}
+.drop-zone p{color:var(--text-muted);font-size:14px;margin:0}
+.doc-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;padding:0 16px;margin-top:14px}
+.doc-thumb{
+  aspect-ratio:1;border-radius:10px;overflow:hidden;background:var(--bg-card2);
+  display:flex;align-items:center;justify-content:center;position:relative;cursor:pointer;
+}
+.doc-thumb img{width:100%;height:100%;object-fit:cover}
+.doc-thumb i{font-size:30px;color:var(--text-label)}
+
+/* ═══════════════════════════════════════════
+   ALERTS & TOASTS
+═══════════════════════════════════════════ */
+.toast-container{
+  position:fixed;top:20px;left:50%;transform:translateX(-50%);
+  z-index:1000;display:flex;flex-direction:column;gap:8px;min-width:280px;
+}
+.crm-toast{
+  padding:12px 18px;border-radius:12px;font-size:14px;font-weight:600;
+  animation:slideDown .3s ease;box-shadow:var(--shadow);display:flex;align-items:center;gap:10px;
+}
+@keyframes slideDown{from{transform:translateY(-20px);opacity:0}to{transform:translateY(0);opacity:1}}
+.crm-toast.success{background:#1a5c2a;border:1px solid var(--accent-green);color:#fff}
+.crm-toast.error{background:#5c1a1a;border:1px solid var(--accent-red);color:#fff}
+.crm-toast.info{background:#1a2e5c;border:1px solid var(--accent-purple);color:#fff}
+
+/* ═══════════════════════════════════════════
+   SETTINGS & MY ACCOUNT
+═══════════════════════════════════════════ */
+.settings-section{margin:0 16px 20px}
+.settings-section h5{
+  font-family:var(--font-display);font-size:18px;font-weight:700;
+  color:var(--text-muted);margin-bottom:12px;letter-spacing:.5px;
+}
+.setting-row{
+  display:flex;align-items:center;justify-content:space-between;
+  background:var(--bg-card2);border:1px solid var(--border);border-radius:10px;
+  padding:14px 16px;margin-bottom:8px;cursor:pointer;transition:var(--transition);
+}
+.setting-row:hover{border-color:var(--accent-purple)}
+.setting-row .sr-left{display:flex;align-items:center;gap:12px;font-size:14px}
+.setting-row .sr-left i{font-size:18px;color:var(--accent-purple);width:22px;text-align:center}
+
+.profile-card{
+  display:flex;flex-direction:column;align-items:center;padding:24px 16px;
+  background:var(--bg-card2);border:1px solid var(--border);border-radius:16px;
+  margin:0 16px 20px;text-align:center;
+}
+.profile-avatar{
+  width:88px;height:88px;border-radius:50%;border:3px solid var(--accent-purple);
+  overflow:hidden;background:var(--bg-card);margin-bottom:12px;
+  display:flex;align-items:center;justify-content:center;font-size:40px;cursor:pointer;
+  position:relative;
+}
+.profile-avatar img{width:100%;height:100%;object-fit:cover}
+.profile-avatar .edit-overlay{
+  position:absolute;inset:0;background:rgba(0,0,0,.5);display:none;
+  align-items:center;justify-content:center;border-radius:50%;
+}
+.profile-avatar:hover .edit-overlay{display:flex}
+.profile-name{font-family:var(--font-display);font-size:26px;font-weight:800}
+.profile-role{font-size:13px;color:var(--text-muted);margin-top:2px}
+.profile-company{
+  display:inline-flex;align-items:center;gap:6px;margin-top:8px;
+  background:var(--bg-input);padding:6px 14px;border-radius:20px;font-size:13px;
+}
+
+/* ═══════════════════════════════════════════
+   ACTIVE USERS PAGE
+═══════════════════════════════════════════ */
+.active-user-row{
+  display:flex;align-items:center;gap:12px;
+  background:var(--bg-card2);border:1px solid var(--border);border-radius:12px;
+  padding:12px 14px;margin:0 16px 10px;cursor:pointer;transition:var(--transition);
+}
+.active-user-row:hover{border-color:var(--accent-purple)}
+.status-dot{
+  width:10px;height:10px;border-radius:50%;flex-shrink:0;
+}
+.status-dot.online{background:var(--accent-green);box-shadow:0 0 6px var(--accent-green)}
+.status-dot.offline{background:var(--text-muted)}
+
+/* ═══════════════════════════════════════════
+   MISC
+═══════════════════════════════════════════ */
+.info-row{
+  display:flex;align-items:center;gap:12px;
+  background:var(--bg-dark-input);border-radius:10px;padding:12px 16px;
+  margin-bottom:10px;font-size:14px;
+}
+.info-row i{color:var(--accent-red);font-size:18px}
+.tag-badge{
+  display:inline-flex;align-items:center;gap:6px;
+  background:rgba(104,50,227,.2);border:1px solid var(--accent-purple);
+  border-radius:20px;padding:4px 12px;font-size:12px;
+}
+.confirm-dialog{
+  position:fixed;inset:0;z-index:600;display:flex;align-items:center;justify-content:center;
+  background:rgba(0,0,0,.7);backdrop-filter:blur(4px);
+}
+.confirm-box{
+  background:var(--bg-card2);border:1px solid var(--border);border-radius:18px;
+  padding:28px 24px;width:88%;max-width:340px;text-align:center;
+  animation:scaleIn .2s ease;box-shadow:var(--shadow);
+}
+.confirm-box h5{font-family:var(--font-display);font-size:22px;margin-bottom:10px}
+.confirm-box p{color:var(--text-muted);font-size:14px;margin-bottom:22px}
+.confirm-actions{display:flex;gap:10px}
+.spinner{
+  display:inline-block;width:20px;height:20px;border:2px solid rgba(255,255,255,.3);
+  border-top-color:#fff;border-radius:50%;animation:spin .6s linear infinite;
+}
+@keyframes spin{to{transform:rotate(360deg)}}
+.loading-full{
+  position:fixed;inset:0;background:rgba(7,18,53,.9);display:flex;align-items:center;
+  justify-content:center;z-index:800;flex-direction:column;gap:16px;
+}
+
+/* Image preview grid */
+.img-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;padding:0 16px;margin-top:8px}
+.img-thumb{aspect-ratio:1;border-radius:10px;overflow:hidden;background:var(--bg-card2);
+  cursor:pointer;position:relative;}
+.img-thumb img{width:100%;height:100%;object-fit:cover}
+.img-thumb .del-btn{
+  position:absolute;top:4px;right:4px;width:22px;height:22px;border-radius:50%;
+  background:rgba(0,0,0,.7);color:#fff;font-size:12px;display:flex;
+  align-items:center;justify-content:center;cursor:pointer;z-index:2;
+  border:1px solid rgba(255,255,255,.2);
+}
+
+/* ─── info banner ─── */
+.info-banner{
+  display:flex;align-items:flex-start;gap:10px;background:rgba(255,100,0,.1);
+  border:1px solid rgba(255,100,0,.3);border-radius:10px;padding:12px 14px;
+  font-size:12px;color:var(--text-muted);margin:10px 16px 0;
+}
+.info-banner i{color:rgba(255,100,0,.8);font-size:18px;flex-shrink:0}
+</style>
+</head>
+<body>
+
+<!-- ═══ TOAST CONTAINER ═══ -->
+<div class="toast-container" id="toastContainer"></div>
+
+<!-- ═══════════════════════════════════
+  LOADING OVERLAY
+════════════════════════════════════ -->
+<div class="loading-full" id="loadingFull" style="display:none">
+  <div class="spinner" style="width:40px;height:40px;border-width:4px"></div>
+  <p style="color:var(--text-muted);font-size:14px">A carregar...</p>
+</div>
+
+<!-- ═══════════════════════════════════
+  CONFIRM DIALOG
+════════════════════════════════════ -->
+<div class="confirm-dialog" id="confirmDialog" style="display:none">
+  <div class="confirm-box">
+    <h5 id="confirmTitle">Confirmar</h5>
+    <p id="confirmMessage">Tem a certeza?</p>
+    <div class="confirm-actions">
+      <button class="btn-crm btn-secondary-crm" style="flex:1" onclick="confirmCancel()">Cancelar</button>
+      <button class="btn-crm btn-red" style="flex:1" id="confirmOkBtn" onclick="confirmOk()">Confirmar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════
+  POPUP OVERLAY
+════════════════════════════════════ -->
+<div class="popup-overlay" id="popupOverlay" style="display:none" onclick="closePopup()"></div>
+
+<!-- ══════════════════════════════════════════════════════════════
+  PAGE: SPLASH
+══════════════════════════════════════════════════════════════ -->
+<div class="page no-nav active" id="page-splash">
+  <div class="splash-logo-big"><span>CRM</span><span>HUB</span></div>
+  <div class="splash-tagline">Customer Relationship<br>Management Hub<br><strong>By Plotting Engage.</strong></div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════
+  PAGE: LOGIN
+══════════════════════════════════════════════════════════════ -->
+<div class="page no-nav" id="page-login">
+  <div style="padding:30px 0 20px;text-align:center">
+    <div style="display:flex;align-items:center;justify-content:center;gap:12px;margin-bottom:6px">
+      <div class="logo-box" style="font-size:18px"><span>CRM</span><span>HUB</span></div>
+      <div class="logo-text" style="text-align:left">Customer Relationship<br>Management Hub<br><strong>By Plotting Engage.</strong></div>
+    </div>
+  </div>
+  <div style="display:flex;justify-content:center;margin:10px 0 20px">
+    <div style="width:80px;height:80px;border-radius:50%;background:var(--bg-card);display:flex;align-items:center;justify-content:center;font-size:40px;border:2px solid var(--border)">
+      <i class="bi bi-person"></i>
+    </div>
+  </div>
+  <div style="text-align:center;font-family:var(--font-display);font-size:26px;font-weight:800;margin-bottom:24px">ENTRAR</div>
+  <div class="form-card">
+    <div class="input-group-crm">
+      <i class="bi bi-envelope-fill"></i>
+      <input type="email" id="loginEmail" placeholder="Email ID" autocomplete="email" required/>
+    </div>
+    <div class="input-group-crm">
+      <i class="bi bi-lock-fill"></i>
+      <input type="password" id="loginPass" placeholder="Palavra-passe" autocomplete="current-password" required/>
+      <i class="bi bi-eye toggle-pass" onclick="togglePass('loginPass',this)" style="cursor:pointer;color:var(--text-label)"></i>
+    </div>
+    <div class="check-row">
+      <label class="crm-check"><input type="checkbox" id="rememberMe"> Lembrar-me</label>
+      <a href="#" class="forgot" onclick="showPage('page-forgot')">Esqueceu a senha?</a>
+    </div>
+    <button class="btn-crm btn-primary-crm" onclick="doLogin()">ENTRAR</button>
+    <button class="btn-crm btn-secondary-crm" onclick="showPage('page-register')">CRIAR CONTA</button>
+  </div>
+  <p style="text-align:center;margin-top:20px;font-size:12px;color:var(--text-label)">
+    Supabase: configure <code style="color:var(--accent-green)">SUPABASE_URL</code> e <code style="color:var(--accent-green)">SUPABASE_KEY</code> no topo do JS
+  </p>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════
+  PAGE: REGISTER
+══════════════════════════════════════════════════════════════ -->
+<div class="page no-nav" id="page-register">
+  <div style="padding:24px 20px 0;display:flex;align-items:center;gap:12px">
+    <button class="back-btn" style="padding:0" onclick="showPage('page-login')"><i class="bi bi-chevron-left"></i></button>
+    <div style="display:flex;align-items:center;gap:10px">
+      <div class="logo-box" style="font-size:15px"><span>CRM</span><span>HUB</span></div>
+      <div class="logo-text">Customer Relationship<br>Management Hub<br><strong>By Plotting Engage.</strong></div>
+    </div>
+  </div>
+  <div style="text-align:center;font-family:var(--font-display);font-size:26px;font-weight:800;margin:20px 0 16px">CRIAR CONTA</div>
+  <div class="form-card">
+    <div class="input-group-crm dark">
+      <i class="bi bi-building"></i>
+      <input type="text" id="regCompany" placeholder="Nome Empresa" required/>
+    </div>
+    <div class="input-group-crm dark">
+      <i class="bi bi-tag-fill"></i>
+      <input type="text" id="regNif" placeholder="NIF" required/>
+    </div>
+    <div class="input-group-crm dark">
+      <i class="bi bi-person-fill"></i>
+      <input type="text" id="regName" placeholder="Nome Master" required/>
+    </div>
+    <div class="input-group-crm dark">
+      <i class="bi bi-envelope-fill"></i>
+      <input type="email" id="regEmail" placeholder="Email Master" required/>
+    </div>
+    <div class="input-group-crm dark">
+      <i class="bi bi-telephone-fill"></i>
+      <input type="tel" id="regPhone" placeholder="Número de telefone"/>
+    </div>
+    <div class="input-group-crm dark">
+      <i class="bi bi-lock-fill"></i>
+      <input type="password" id="regPass" placeholder="Palavra-passe" required/>
+      <i class="bi bi-eye toggle-pass" onclick="togglePass('regPass',this)" style="cursor:pointer;color:var(--text-label)"></i>
+    </div>
+    <div class="input-group-crm dark">
+      <i class="bi bi-lock-fill" style="color:var(--accent-purple)"></i>
+      <input type="password" id="regPassConf" placeholder="Confirmar Palavra-passe" required/>
+    </div>
+    <div class="input-group-crm dark">
+      <i class="bi bi-geo-alt-fill"></i>
+      <input type="text" id="regCountry" placeholder="País" value="Angola"/>
+    </div>
+    <label class="crm-check" style="margin:10px 0 16px"><input type="checkbox" id="regTerms"> Aceito os termos e condições</label>
+    <button class="btn-crm btn-purple" onclick="doRegister()">REGISTAR</button>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════
+  PAGE: FORGOT PASSWORD
+══════════════════════════════════════════════════════════════ -->
+<div class="page no-nav" id="page-forgot">
+  <div style="padding:24px 20px 0">
+    <button class="back-btn" style="padding:0" onclick="showPage('page-login')"><i class="bi bi-chevron-left"></i></button>
+  </div>
+  <div style="text-align:center;font-family:var(--font-display);font-size:26px;font-weight:800;margin:30px 0 16px">RECUPERAR SENHA</div>
+  <div class="form-card">
+    <p style="font-size:14px;color:var(--text-muted);margin-bottom:16px">Introduza o seu email para receber um link de recuperação.</p>
+    <div class="input-group-crm">
+      <i class="bi bi-envelope-fill"></i>
+      <input type="email" id="forgotEmail" placeholder="Email"/>
+    </div>
+    <button class="btn-crm btn-primary-crm" onclick="doForgot()">ENVIAR LINK</button>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════
+  PAGE: HOME (Projects)
+══════════════════════════════════════════════════════════════ -->
+<div class="page" id="page-home">
+  <div class="app-header">
+    <div class="logo-wrap">
+      <div class="logo-box"><span>CRM</span><span>HUB</span></div>
+      <div class="logo-text">Customer Relationship<br>Management Hub<br><strong>By Plotting Engage.</strong></div>
+    </div>
+    <div class="header-user">
+      <div class="avatar-wrap">
+        <div class="avatar-img" id="hdrAvatar"><i class="bi bi-person"></i></div>
+      </div>
+      <div class="header-username" id="hdrName">Master</div>
+      <div class="header-actions">
+        <button class="hdr-btn" onclick="showPage('page-notifications')" title="Notificações">
+          <i class="bi bi-bell"></i><span class="badge-dot" id="notifDot"></span>
+        </button>
+        <button class="hdr-btn" onclick="showPage('page-messages')" title="Mensagens">
+          <i class="bi bi-chat-dots"></i><span class="badge-dot" id="msgDot"></span>
+        </button>
+        <button class="hdr-btn" onclick="confirmLogout()" title="Sair" style="border-color:var(--accent-red)">
+          <i class="bi bi-power"></i>
+        </button>
+      </div>
+      <div class="hdr-label" onclick="showPage('page-active-users')" style="cursor:pointer;text-decoration:underline">Usuários Ativos</div>
+    </div>
+  </div>
+
+  <div class="section-title">Projectos</div>
+  <div class="projects-grid" id="projectsGrid">
+    <!-- JS populated -->
+  </div>
+  <div style="height:14px"></div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════
+  PAGE: NOMEAR USER (Assign Users)
+══════════════════════════════════════════════════════════════ -->
+<div class="page" id="page-nomear">
+  <div class="app-header">
+    <div class="logo-wrap">
+      <div class="logo-box"><span>CRM</span><span>HUB</span></div>
+      <div class="logo-text">Customer Relationship<br>Management Hub<br><strong>By Plotting Engage.</strong></div>
+    </div>
+    <div class="header-user">
+      <div class="avatar-img" id="nomearAvatar"><i class="bi bi-person"></i></div>
+      <div class="header-username" id="nomearName">Master</div>
+      <div class="hdr-label">Usuários Ativos</div>
+    </div>
+  </div>
+  <button class="back-btn" onclick="goBack()"><i class="bi bi-chevron-left"></i></button>
+  <div class="page-title">Nomear User</div>
+  <div style="padding:0 20px" id="nomearList">
+    <!-- JS populated -->
+  </div>
+  <div class="info-banner">
+    <i class="bi bi-exclamation-circle-fill"></i>
+    <div>Administrador pode Criar, Inserir, Extrair<br>Colaborador só pode inserir e extrair</div>
+  </div>
+  <div style="padding:16px">
+    <button class="btn-crm btn-purple" onclick="saveProjectMembers()">
+      <i class="bi bi-check-lg"></i> GUARDAR ALTERAÇÕES
+    </button>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════
+  PAGE: CREATE PROJECT
+══════════════════════════════════════════════════════════════ -->
+<div class="page" id="page-create-project">
+  <div class="app-header">
+    <div class="logo-wrap">
+      <div class="logo-box"><span>CRM</span><span>HUB</span></div>
+      <div class="logo-text">Customer Relationship<br>Management Hub<br><strong>By Plotting Engage.</strong></div>
+    </div>
+    <div class="header-user">
+      <div class="avatar-img"><i class="bi bi-person"></i></div>
+      <div class="header-username" id="createProjUserName">Master</div>
+    </div>
+  </div>
+  <button class="back-btn" onclick="goBack()"><i class="bi bi-chevron-left"></i></button>
+  <div class="page-title">Criar Projecto</div>
+  <div class="form-card">
+    <div style="display:flex;align-items:center;gap:14px;margin-bottom:16px">
+      <div style="width:80px;height:80px;border-radius:10px;background:var(--bg-card2);border:1px dashed var(--border);display:flex;align-items:center;justify-content:center;cursor:pointer;overflow:hidden;position:relative;flex-shrink:0" onclick="document.getElementById('projLogoInput').click()" id="projLogoPreview">
+        <i class="bi bi-image" style="font-size:28px;color:var(--text-label)"></i>
+        <div class="proj-add-btn" style="bottom:4px;right:4px"><i class="bi bi-plus"></i></div>
+        <img id="projLogoImg" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:none"/>
+      </div>
+      <div style="flex:1">
+        <div class="input-group-crm dark" style="margin-bottom:0">
+          <i class="bi bi-briefcase-fill"></i>
+          <input type="text" id="projName" placeholder="Nome do Projecto" required/>
+        </div>
+      </div>
+    </div>
+    <input type="file" id="projLogoInput" accept="image/*" style="display:none" onchange="previewLogo(this)"/>
+    <div class="input-group-crm dark">
+      <i class="bi bi-text-left"></i>
+      <input type="text" id="projDesc" placeholder="Descrição (opcional)"/>
+    </div>
+    <div class="input-group-crm dark">
+      <i class="bi bi-calendar-check-fill" style="color:var(--accent-green)"></i>
+      <input type="date" id="projDate"/>
+    </div>
+    <div style="margin-top:6px;margin-bottom:16px">
+      <div class="section-title" style="padding:0;margin-bottom:12px;font-size:22px">Plantas</div>
+      <div class="projects-grid" id="floorPlansGrid" style="grid-template-columns:repeat(4,1fr)">
+        <div class="proj-card" style="cursor:pointer" onclick="openAddFloorPlan()">
+          <div class="proj-add-btn" style="position:static;width:36px;height:36px;font-size:20px"><i class="bi bi-plus"></i></div>
+        </div>
+      </div>
+    </div>
+    <button class="btn-crm btn-green" onclick="saveProject()">
+      <i class="bi bi-floppy-fill"></i> GUARDAR PROJECTO
+    </button>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════
+  PAGE: PROJECT DETAIL (Floor plan builder)
+══════════════════════════════════════════════════════════════ -->
+<div class="page" id="page-project">
+  <div class="app-header">
+    <div class="logo-wrap">
+      <div class="logo-box"><span>CRM</span><span>HUB</span></div>
+      <div class="logo-text">Customer Relationship<br>Management Hub<br><strong>By Plotting Engage.</strong></div>
+    </div>
+    <div class="header-user">
+      <div class="avatar-img"><i class="bi bi-person"></i></div>
+      <div class="header-username" id="projDetailUser">Master</div>
+      <div class="hdr-label" onclick="showPage('page-active-users')" style="cursor:pointer;text-decoration:underline">Usuários Ativos</div>
+    </div>
+  </div>
+  <button class="back-btn" onclick="goBack()"><i class="bi bi-chevron-left"></i></button>
+  <div class="page-title" id="projDetailTitle">Projecto</div>
+
+  <div style="padding:0 16px;margin-bottom:16px;display:flex;align-items:center;gap:14px">
+    <div style="width:80px;height:80px;border-radius:10px;overflow:hidden;background:var(--bg-card2);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;cursor:pointer;position:relative;flex-shrink:0" id="projDetailImgWrap">
+      <i class="bi bi-image" style="font-size:28px;color:var(--text-label)"></i>
+      <img id="projDetailImg" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:none"/>
+      <div class="proj-add-btn" style="bottom:4px;right:4px" onclick="document.getElementById('projDetailImgInput').click()"><i class="bi bi-camera-fill"></i></div>
+    </div>
+    <div>
+      <div id="projDetailName" style="font-family:var(--font-display);font-size:20px;font-weight:700"></div>
+      <div id="projDetailDate" style="font-size:12px;color:var(--text-muted)"></div>
+      <div style="display:flex;gap:8px;margin-top:8px">
+        <button class="btn-crm btn-secondary-crm" style="padding:6px 12px;font-size:12px;width:auto" onclick="openNomearUser()">
+          <i class="bi bi-people-fill"></i> Equipa
+        </button>
+      </div>
+    </div>
+  </div>
+  <input type="file" id="projDetailImgInput" accept="image/*" style="display:none" onchange="updateProjImage(this)"/>
+
+  <div class="section-title" style="font-size:22px;padding-bottom:6px">Plantas</div>
+  <div id="floorPlanTabsWrap" style="padding:0 16px;display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px"></div>
+  <div id="floorPlanBuilderWrap"><!-- builder injected --></div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════
+  PAGE: STAND DETAIL (view rental / register)
+══════════════════════════════════════════════════════════════ -->
+<div class="page" id="page-stand">
+  <div class="app-header">
+    <div class="logo-wrap">
+      <div class="logo-box"><span>CRM</span><span>HUB</span></div>
+      <div class="logo-text">Customer Relationship<br>Management Hub<br><strong>By Plotting Engage.</strong></div>
+    </div>
+    <div class="header-user">
+      <div class="avatar-img"><i class="bi bi-person"></i></div>
+      <div class="header-username">Master</div>
+    </div>
+  </div>
+  <button class="back-btn" onclick="goBack()"><i class="bi bi-chevron-left"></i></button>
+  <div style="padding:0 16px;font-family:var(--font-display);font-size:20px;font-weight:700;margin-bottom:6px" id="standFloorName">Pavilhão 1</div>
+  <div class="page-title" id="standTitle">STAND 03</div>
+  <div id="standContent"><!-- JS populated --></div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════
+  PAGE: MY LIST
+══════════════════════════════════════════════════════════════ -->
+<div class="page" id="page-mylist">
+  <div class="app-header">
+    <div class="logo-wrap">
+      <div class="logo-box"><span>CRM</span><span>HUB</span></div>
+      <div class="logo-text">Customer Relationship<br>Management Hub<br><strong>By Plotting Engage.</strong></div>
+    </div>
+    <div class="header-user">
+      <div class="avatar-img"><i class="bi bi-person"></i></div>
+      <div class="header-username" id="myListUser">Master</div>
+    </div>
+  </div>
+  <div class="section-title">My List</div>
+  <div style="padding:0 16px 12px;display:flex;gap:8px;flex-wrap:wrap">
+    <input type="text" id="listSearch" placeholder="Pesquisar cliente ou stand..." 
+      style="flex:1;background:var(--bg-card2);border:1px solid var(--border);border-radius:10px;padding:10px 14px;color:#fff;font-size:14px;min-width:0" oninput="filterList()"/>
+    <select id="listFilter" style="background:var(--bg-card2);border:1px solid var(--border);border-radius:10px;padding:10px;color:#fff;font-size:13px" onchange="filterList()">
+      <option value="all">Todos</option>
+      <option value="active">Activos</option>
+      <option value="cancelled">Cancelados</option>
+    </select>
+  </div>
+  <div id="myListContent"><!-- JS populated --></div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════
+  PAGE: RENTAL DETAIL (from My List)
+══════════════════════════════════════════════════════════════ -->
+<div class="page" id="page-rental-detail">
+  <div class="app-header">
+    <div class="logo-wrap">
+      <div class="logo-box"><span>CRM</span><span>HUB</span></div>
+      <div class="logo-text">Customer Relationship<br>Management Hub<br><strong>By Plotting Engage.</strong></div>
+    </div>
+    <div class="header-user">
+      <div class="avatar-img"><i class="bi bi-person"></i></div>
+      <div class="header-username">Master</div>
+    </div>
+  </div>
+  <button class="back-btn" onclick="goBack()"><i class="bi bi-chevron-left"></i></button>
+  <div id="rentalDetailContent"><!-- JS populated --></div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════
+  PAGE: SETTINGS
+══════════════════════════════════════════════════════════════ -->
+<div class="page" id="page-settings">
+  <div class="app-header">
+    <div class="logo-wrap">
+      <div class="logo-box"><span>CRM</span><span>HUB</span></div>
+      <div class="logo-text">Customer Relationship<br>Management Hub<br><strong>By Plotting Engage.</strong></div>
+    </div>
+    <div class="header-user">
+      <div class="avatar-img"><i class="bi bi-person"></i></div>
+      <div class="header-username" id="settingsUser">Master</div>
+    </div>
+  </div>
+  <div class="section-title">Definições</div>
+  <div class="settings-section">
+    <h5>PROJECTOS</h5>
+    <div class="setting-row" onclick="showPage('page-create-project')">
+      <div class="sr-left"><i class="bi bi-folder-plus"></i> Criar Novo Projecto</div>
+      <i class="bi bi-chevron-right" style="color:var(--text-label)"></i>
+    </div>
+    <div class="setting-row" onclick="showPage('page-home')">
+      <div class="sr-left"><i class="bi bi-folder2-open"></i> Ver Todos os Projectos</div>
+      <i class="bi bi-chevron-right" style="color:var(--text-label)"></i>
+    </div>
+  </div>
+  <div class="settings-section">
+    <h5>UTILIZADORES</h5>
+    <div class="setting-row" onclick="openCreateUserModal()">
+      <div class="sr-left"><i class="bi bi-person-plus-fill"></i> Criar Novo Utilizador</div>
+      <i class="bi bi-chevron-right" style="color:var(--text-label)"></i>
+    </div>
+    <div class="setting-row" onclick="showPage('page-active-users')">
+      <div class="sr-left"><i class="bi bi-people-fill"></i> Gerir Utilizadores</div>
+      <i class="bi bi-chevron-right" style="color:var(--text-label)"></i>
+    </div>
+  </div>
+  <div class="settings-section">
+    <h5>CONTA</h5>
+    <div class="setting-row" onclick="showPage('page-account')">
+      <div class="sr-left"><i class="bi bi-person-circle"></i> O Meu Perfil</div>
+      <i class="bi bi-chevron-right" style="color:var(--text-label)"></i>
+    </div>
+    <div class="setting-row" onclick="openChangePassword()">
+      <div class="sr-left"><i class="bi bi-key-fill"></i> Alterar Senha</div>
+      <i class="bi bi-chevron-right" style="color:var(--text-label)"></i>
+    </div>
+    <div class="setting-row" style="color:var(--accent-red)" onclick="confirmLogout()">
+      <div class="sr-left"><i class="bi bi-box-arrow-right" style="color:var(--accent-red)"></i> Terminar Sessão</div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════
+  PAGE: MY ACCOUNT
+══════════════════════════════════════════════════════════════ -->
+<div class="page" id="page-account">
+  <div class="app-header">
+    <div class="logo-wrap">
+      <div class="logo-box"><span>CRM</span><span>HUB</span></div>
+      <div class="logo-text">Customer Relationship<br>Management Hub<br><strong>By Plotting Engage.</strong></div>
+    </div>
+    <div class="header-user">
+      <div class="avatar-img"><i class="bi bi-person"></i></div>
+      <div class="header-username">Master</div>
+    </div>
+  </div>
+  <div class="section-title">My Account</div>
+  <div class="profile-card" id="profileCard">
+    <div class="profile-avatar" id="profileAvatarWrap" onclick="document.getElementById('avatarInput').click()">
+      <i class="bi bi-person" style="font-size:40px"></i>
+      <div class="edit-overlay"><i class="bi bi-camera-fill" style="font-size:22px"></i></div>
+    </div>
+    <input type="file" id="avatarInput" accept="image/*" style="display:none" onchange="uploadAvatar(this)"/>
+    <div class="profile-name" id="profileName">—</div>
+    <div class="profile-role" id="profileRole">—</div>
+    <div class="profile-company" id="profileCompany"><i class="bi bi-building"></i> —</div>
+  </div>
+
+  <div style="padding:0 16px">
+    <div class="input-group-crm dark" style="margin-bottom:10px">
+      <i class="bi bi-person-fill"></i>
+      <input type="text" id="accName" placeholder="Nome completo"/>
+    </div>
+    <div class="input-group-crm dark">
+      <i class="bi bi-telephone-fill"></i>
+      <input type="tel" id="accPhone" placeholder="Telefone"/>
+    </div>
+    <div class="input-group-crm dark">
+      <i class="bi bi-envelope-fill"></i>
+      <input type="email" id="accEmail" placeholder="Email" disabled style="opacity:.6"/>
+    </div>
+  </div>
+
+  <div class="settings-section" style="margin-top:6px">
+    <h5>EMPRESA</h5>
+    <div id="companyInfo" style="padding:0"></div>
+  </div>
+
+  <div class="settings-section" id="adminAccountSection" style="display:none">
+    <h5>ADMINISTRAÇÃO</h5>
+    <div class="setting-row" onclick="showPage('page-active-users')">
+      <div class="sr-left"><i class="bi bi-people-fill"></i> Utilizadores Ativos</div>
+      <i class="bi bi-chevron-right" style="color:var(--text-label)"></i>
+    </div>
+  </div>
+
+  <div style="padding:0 16px 16px;display:flex;gap:10px">
+    <button class="btn-crm btn-green" style="flex:1" onclick="saveAccount()">
+      <i class="bi bi-floppy-fill"></i> GUARDAR
+    </button>
+  </div>
+
+  <div class="settings-section">
+    <h5>PROJECTOS</h5>
+    <div id="accountProjects"></div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════
+  PAGE: MESSAGES
+══════════════════════════════════════════════════════════════ -->
+<div class="page" id="page-messages">
+  <div class="app-header">
+    <div class="logo-wrap">
+      <div class="logo-box"><span>CRM</span><span>HUB</span></div>
+      <div class="logo-text">Customer Relationship<br>Management Hub<br><strong>By Plotting Engage.</strong></div>
+    </div>
+    <div class="header-user">
+      <div class="avatar-img"><i class="bi bi-person"></i></div>
+      <div class="header-username">Master</div>
+    </div>
+  </div>
+  <button class="back-btn" onclick="goBack()"><i class="bi bi-chevron-left"></i></button>
+  <div class="page-title">Mensagens</div>
+  <div style="padding:0 16px" id="messagesList"><!-- JS populated --></div>
+  <div style="position:fixed;bottom:calc(var(--nav-h)+16px);right:20px">
+    <button class="btn-crm btn-purple" style="width:auto;padding:12px 20px;border-radius:30px" onclick="openNewMessage()">
+      <i class="bi bi-pencil-fill"></i> Nova Mensagem
+    </button>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════
+  PAGE: MESSAGE DETAIL
+══════════════════════════════════════════════════════════════ -->
+<div class="page" id="page-message-detail">
+  <div class="app-header">
+    <div class="logo-wrap">
+      <div class="logo-box"><span>CRM</span><span>HUB</span></div>
+      <div class="logo-text">Customer Relationship<br>Management Hub<br><strong>By Plotting Engage.</strong></div>
+    </div>
+  </div>
+  <button class="back-btn" onclick="goBack()"><i class="bi bi-chevron-left"></i></button>
+  <div id="msgDetailContent" style="padding:0 16px"></div>
+  <div style="padding:12px 16px;position:sticky;bottom:calc(var(--nav-h)+8px)">
+    <div style="display:flex;gap:8px">
+      <input type="text" id="replyInput" placeholder="Escreva uma resposta..." style="flex:1;background:var(--bg-card2);border:1px solid var(--border);border-radius:10px;padding:12px 14px;color:#fff;font-size:14px"/>
+      <button class="btn-crm btn-purple" style="width:auto;padding:12px 16px;border-radius:10px" onclick="sendReply()">
+        <i class="bi bi-send-fill"></i>
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════
+  PAGE: NOTIFICATIONS
+══════════════════════════════════════════════════════════════ -->
+<div class="page" id="page-notifications">
+  <div class="app-header">
+    <div class="logo-wrap">
+      <div class="logo-box"><span>CRM</span><span>HUB</span></div>
+      <div class="logo-text">Customer Relationship<br>Management Hub<br><strong>By Plotting Engage.</strong></div>
+    </div>
+  </div>
+  <button class="back-btn" onclick="goBack()"><i class="bi bi-chevron-left"></i></button>
+  <div class="page-title">Notificações</div>
+  <div id="notificationsList" style="padding:0 16px"></div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════
+  PAGE: ACTIVE USERS
+══════════════════════════════════════════════════════════════ -->
+<div class="page" id="page-active-users">
+  <div class="app-header">
+    <div class="logo-wrap">
+      <div class="logo-box"><span>CRM</span><span>HUB</span></div>
+      <div class="logo-text">Customer Relationship<br>Management Hub<br><strong>By Plotting Engage.</strong></div>
+    </div>
+  </div>
+  <button class="back-btn" onclick="goBack()"><i class="bi bi-chevron-left"></i></button>
+  <div class="page-title">Utilizadores</div>
+  <div style="display:flex;gap:8px;padding:0 16px;margin-bottom:14px">
+    <button class="btn-crm btn-purple" style="width:auto;padding:10px 16px;font-size:13px" onclick="openCreateUserModal()">
+      <i class="bi bi-person-plus-fill"></i> Novo Utilizador
+    </button>
+    <select id="userFilterStatus" style="background:var(--bg-card2);border:1px solid var(--border);border-radius:10px;padding:10px;color:#fff;font-size:13px" onchange="loadUsers()">
+      <option value="all">Todos</option>
+      <option value="active">Ativos</option>
+      <option value="inactive">Inativos</option>
+    </select>
+  </div>
+  <div id="activeUsersList"><!-- JS populated --></div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════
+  PAGE: USER ACTIVITY
+══════════════════════════════════════════════════════════════ -->
+<div class="page" id="page-user-activity">
+  <div class="app-header">
+    <div class="logo-wrap">
+      <div class="logo-box"><span>CRM</span><span>HUB</span></div>
+      <div class="logo-text">Customer Relationship<br>Management Hub<br><strong>By Plotting Engage.</strong></div>
+    </div>
+  </div>
+  <button class="back-btn" onclick="goBack()"><i class="bi bi-chevron-left"></i></button>
+  <div class="page-title" id="userActivityTitle">Operações</div>
+  <div id="userActivityList" style="padding:0 16px"></div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════
+  BOTTOM NAVIGATION
+══════════════════════════════════════════════════════════════ -->
+<nav class="bottom-nav" id="bottomNav" style="display:none">
+  <button class="nav-item active" data-page="page-home" onclick="navTo('page-home',this)">
+    <i class="bi bi-house-fill"></i><span>Home</span>
+  </button>
+  <button class="nav-item" data-page="page-mylist" onclick="navTo('page-mylist',this)">
+    <i class="bi bi-list-ul"></i><span>My List</span>
+  </button>
+  <button class="nav-item" data-page="page-settings" onclick="navTo('page-settings',this)">
+    <i class="bi bi-gear-fill"></i><span>Setting</span>
+  </button>
+  <button class="nav-item" data-page="page-account" onclick="navTo('page-account',this)">
+    <i class="bi bi-person-fill"></i><span>My Account</span>
+  </button>
+</nav>
+
+<!-- ══════════════════════════════════════════════════════════════
+  MODAL: ADD FLOOR PLAN
+══════════════════════════════════════════════════════════════ -->
+<div class="stand-popup" id="addFloorPlanModal" style="display:none">
+  <h5 style="font-family:var(--font-display);font-size:20px;font-weight:800;margin-bottom:16px">Nova Planta</h5>
+  <div class="input-group-crm dark">
+    <i class="bi bi-map"></i>
+    <input type="text" id="fpName" placeholder="Nome (ex: Pavilhão 1)" required/>
+  </div>
+  <div style="display:flex;gap:10px;margin-top:8px">
+    <div class="input-group-crm dark" style="flex:1;margin-bottom:0">
+      <i class="bi bi-arrows-expand-vertical"></i>
+      <input type="number" id="fpWidth" placeholder="Largura (m)" value="10" min="1" max="100"/>
+    </div>
+    <div style="display:flex;align-items:center;font-weight:700;font-size:18px">✕</div>
+    <div class="input-group-crm dark" style="flex:1;margin-bottom:0">
+      <i class="bi bi-arrows-expand"></i>
+      <input type="number" id="fpLength" placeholder="Comprimento (m)" value="20" min="1" max="100"/>
+    </div>
+  </div>
+  <div style="display:flex;gap:8px;margin-top:16px">
+    <button class="btn-crm btn-secondary-crm" style="flex:1;margin:0" onclick="closePopup()">Cancelar</button>
+    <button class="btn-crm btn-green" style="flex:1" onclick="addFloorPlan()">Adicionar</button>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════
+  MODAL: CREATE USER
+══════════════════════════════════════════════════════════════ -->
+<div class="stand-popup" id="createUserModal" style="display:none">
+  <h5 style="font-family:var(--font-display);font-size:20px;font-weight:800;margin-bottom:16px">Novo Utilizador</h5>
+  <div class="input-group-crm dark">
+    <i class="bi bi-person-fill"></i>
+    <input type="text" id="cuName" placeholder="Nome completo" required/>
+  </div>
+  <div class="input-group-crm dark">
+    <i class="bi bi-envelope-fill"></i>
+    <input type="email" id="cuEmail" placeholder="Email" required/>
+  </div>
+  <div class="input-group-crm dark">
+    <i class="bi bi-telephone-fill"></i>
+    <input type="tel" id="cuPhone" placeholder="Telefone"/>
+  </div>
+  <div class="input-group-crm dark">
+    <i class="bi bi-lock-fill"></i>
+    <input type="password" id="cuPass" placeholder="Senha temporária" required/>
+  </div>
+  <div class="input-group-crm dark">
+    <i class="bi bi-shield-fill"></i>
+    <select id="cuRole">
+      <option value="collaborator">Colaborador</option>
+      <option value="admin">Administrador</option>
+      <option value="master">Master</option>
+    </select>
+  </div>
+  <div style="display:flex;gap:8px;margin-top:16px">
+    <button class="btn-crm btn-secondary-crm" style="flex:1;margin:0" onclick="closePopup()">Cancelar</button>
+    <button class="btn-crm btn-purple" style="flex:1" onclick="createUser()">Criar</button>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════
+  MODAL: NEW MESSAGE
+══════════════════════════════════════════════════════════════ -->
+<div class="stand-popup" id="newMsgModal" style="display:none">
+  <h5 style="font-family:var(--font-display);font-size:20px;font-weight:800;margin-bottom:16px">Nova Mensagem</h5>
+  <div class="input-group-crm dark">
+    <i class="bi bi-person-fill"></i>
+    <select id="msgToUser"><option value="">Selecionar destinatário...</option></select>
+  </div>
+  <div class="input-group-crm dark">
+    <i class="bi bi-chat-text"></i>
+    <input type="text" id="msgSubject" placeholder="Assunto"/>
+  </div>
+  <div style="background:var(--bg-dark-input);border:1px solid var(--border);border-radius:10px;padding:12px;margin-bottom:12px">
+    <textarea id="msgBody" placeholder="Mensagem..." style="background:transparent;border:none;outline:none;color:#fff;width:100%;min-height:100px;font-family:var(--font-body);font-size:14px;resize:none"></textarea>
+  </div>
+  <div style="display:flex;gap:8px">
+    <button class="btn-crm btn-secondary-crm" style="flex:1;margin:0" onclick="closePopup()">Cancelar</button>
+    <button class="btn-crm btn-purple" style="flex:1" onclick="sendNewMessage()">Enviar</button>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════
+  MODAL: CHANGE PASSWORD
+══════════════════════════════════════════════════════════════ -->
+<div class="stand-popup" id="changePassModal" style="display:none">
+  <h5 style="font-family:var(--font-display);font-size:20px;font-weight:800;margin-bottom:16px">Alterar Senha</h5>
+  <div class="input-group-crm dark">
+    <i class="bi bi-lock-fill"></i>
+    <input type="password" id="newPass1" placeholder="Nova senha"/>
+  </div>
+  <div class="input-group-crm dark">
+    <i class="bi bi-lock-fill" style="color:var(--accent-green)"></i>
+    <input type="password" id="newPass2" placeholder="Confirmar nova senha"/>
+  </div>
+  <div style="display:flex;gap:8px;margin-top:16px">
+    <button class="btn-crm btn-secondary-crm" style="flex:1;margin:0" onclick="closePopup()">Cancelar</button>
+    <button class="btn-crm btn-green" style="flex:1" onclick="changePassword()">Alterar</button>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════
+  JS – Supabase + App Logic
+══════════════════════════════════════════════════════════════ -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script>
+/* ═══════════════════════════════════════════════════════════════
+   ⚠️  CONFIGURAÇÃO SUPABASE
+   Substitua os valores abaixo pelos do seu projecto Supabase:
+   Dashboard → Settings → API → Project URL & anon public key
+═══════════════════════════════════════════════════════════════ */
+const SUPABASE_URL  = 'https://SEU-PROJECTO.supabase.co';
+const SUPABASE_KEY  = 'SUA-CHAVE-ANONIMA-PUBLICA';
+
+const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+/* ───── App State ───── */
+let currentUser   = null;
+let currentProfile= null;
+let currentProject= null;
+let currentFP     = null;  // active floor plan
+let editMode      = null;  // 'corridor' | 'stand' | null
+let tempFPs       = [];    // floor plans being built (before project save)
+let allUsers      = [];
+let confirmCallback = null;
+let currentRental = null;
+let pageHistory   = [];
+let currentMsgId  = null;
+
+/* ═══ INIT ═══ */
+window.addEventListener('DOMContentLoaded', async () => {
+  setTimeout(async () => {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (session) {
+      currentUser = session.user;
+      await loadProfile();
+      enterApp();
+    } else {
+      showPage('page-login');
+    }
+  }, 3000); // splash duration
+
+  supabase.auth.onAuthStateChange(async (event, session) => {
+    if (event === 'SIGNED_IN' && session) {
+      currentUser = session.user;
+      await loadProfile();
+      enterApp();
+    } else if (event === 'SIGNED_OUT') {
+      currentUser = null; currentProfile = null;
+      showPage('page-login');
+      document.getElementById('bottomNav').style.display = 'none';
+    }
+  });
+});
+
+async function loadProfile() {
+  const { data, error } = await supabase
+    .from('profiles')
+    .select('*, companies(*)')
+    .eq('id', currentUser.id)
+    .single();
+  if (data) { currentProfile = data; updateHeaderUI(); }
+}
+
+function updateHeaderUI() {
+  if (!currentProfile) return;
+  const name = currentProfile.full_name || currentUser.email;
+  document.querySelectorAll('[id$="Name"],[id$="User"],[id$="hdrName"],[id$="nomearName"]').forEach(el => {
+    if (el.id === 'hdrName' || el.id === 'nomearName' || el.id.includes('User')) el.textContent = name;
+  });
+  // Update avatars
+  if (currentProfile.avatar_url) {
+    document.querySelectorAll('.avatar-img,.hdr-avatar').forEach(el => {
+      el.innerHTML = `<img src="${currentProfile.avatar_url}" style="width:100%;height:100%;object-fit:cover;border-radius:50%"/>`;
+    });
+  }
+  loadBadges();
+}
+
+function enterApp() {
+  document.getElementById('bottomNav').style.display = 'flex';
+  showPage('page-home');
+  loadProjects();
+  checkRole();
+}
+
+function checkRole() {
+  const role = currentProfile?.role;
+  if (role === 'admin' || role === 'master') {
+    document.getElementById('adminAccountSection').style.display = 'block';
+  }
+}
+
+/* ═══ PAGE NAVIGATION ═══ */
+function showPage(id, pushHistory = true) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  const page = document.getElementById(id);
+  if (page) { page.classList.add('active'); page.scrollTop = 0; }
+  if (pushHistory && id !== 'page-splash') pageHistory.push(id);
+  const noNavPages = ['page-splash','page-login','page-register','page-forgot'];
+  document.getElementById('bottomNav').style.display = noNavPages.includes(id) ? 'none' : 'flex';
+}
+
+function navTo(pageId, btn) {
+  document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  pageHistory = [pageId];
+  showPage(pageId, false);
+  if (pageId === 'page-home') loadProjects();
+  if (pageId === 'page-mylist') loadMyList();
+  if (pageId === 'page-account') loadAccountPage();
+  if (pageId === 'page-settings') { /* static */ }
+}
+
+function goBack() {
+  pageHistory.pop();
+  const prev = pageHistory[pageHistory.length - 1] || 'page-home';
+  showPage(prev, false);
+}
+
+/* ═══ AUTH ═══ */
+async function doLogin() {
+  const email = document.getElementById('loginEmail').value.trim();
+  const pass  = document.getElementById('loginPass').value;
+  if (!email || !pass) { toast('Preencha todos os campos','error'); return; }
+  showLoading(true);
+  const { data, error } = await supabase.auth.signInWithPassword({ email, password: pass });
+  showLoading(false);
+  if (error) { toast(error.message, 'error'); return; }
+  // loadProfile and enterApp handled by onAuthStateChange
+}
+
+async function doRegister() {
+  const company = document.getElementById('regCompany').value.trim();
+  const nif     = document.getElementById('regNif').value.trim();
+  const name    = document.getElementById('regName').value.trim();
+  const email   = document.getElementById('regEmail').value.trim();
+  const phone   = document.getElementById('regPhone').value.trim();
+  const pass    = document.getElementById('regPass').value;
+  const passC   = document.getElementById('regPassConf').value;
+  const country = document.getElementById('regCountry').value.trim();
+  const terms   = document.getElementById('regTerms').checked;
+
+  if (!company || !nif || !name || !email || !pass) { toast('Preencha todos os campos obrigatórios', 'error'); return; }
+  if (pass.length < 6) { toast('A senha deve ter pelo menos 6 caracteres', 'error'); return; }
+  if (pass !== passC) { toast('As senhas não coincidem', 'error'); return; }
+  if (!terms) { toast('Aceite os termos e condições', 'error'); return; }
+
+  showLoading(true);
+  // Create company first
+  const { data: compData, error: compErr } = await supabase
+    .from('companies').insert([{ name: company, nif, email, phone, country }]).select().single();
+  if (compErr) { showLoading(false); toast('Erro ao criar empresa: ' + compErr.message, 'error'); return; }
+
+  const { data, error } = await supabase.auth.signUp({
+    email, password: pass,
+    options: { data: { full_name: name, role: 'master' } }
+  });
+  showLoading(false);
+  if (error) { toast(error.message, 'error'); return; }
+
+  // Update profile with company and role
+  await supabase.from('profiles')
+    .update({ full_name: name, phone, company_id: compData.id, role: 'master' })
+    .eq('email', email);
+
+  toast('Conta criada! Verifique o seu email.', 'success');
+  showPage('page-login');
+}
+
+async function doForgot() {
+  const email = document.getElementById('forgotEmail').value.trim();
+  if (!email) { toast('Introduza o seu email', 'error'); return; }
+  const { error } = await supabase.auth.resetPasswordForEmail(email);
+  if (error) { toast(error.message, 'error'); return; }
+  toast('Link enviado para o email!', 'success');
+  showPage('page-login');
+}
+
+function confirmLogout() {
+  showConfirm('Terminar Sessão', 'Deseja realmente sair da sua conta?', async () => {
+    await supabase.auth.signOut();
+  });
+}
+
+/* ═══ PROJECTS ═══ */
+async function loadProjects() {
+  showLoading(true);
+  let query = supabase.from('projects').select('*').order('created_at', { ascending: false });
+  if (currentProfile?.role !== 'master') {
+    const { data: memberProjs } = await supabase
+      .from('project_members').select('project_id').eq('user_id', currentUser.id);
+    const ids = (memberProjs || []).map(m => m.project_id);
+    const compId = currentProfile?.company_id;
+    query = supabase.from('projects').select('*')
+      .or(`company_id.eq.${compId},id.in.(${ids.join(',') || 'null'})`)
+      .order('created_at', { ascending: false });
+  }
+  const { data: projects } = await query;
+  showLoading(false);
+  renderProjectGrid(projects || []);
+}
+
+function renderProjectGrid(projects) {
+  const grid = document.getElementById('projectsGrid');
+  const canCreate = ['master','admin'].includes(currentProfile?.role);
+  let html = '';
+  projects.forEach(p => {
+    html += `<div class="proj-card" onclick="openProject('${p.id}')">
+      ${p.image_url ? `<img src="${p.image_url}" alt="${p.name}"/>` : ''}
+      <div class="proj-name" style="z-index:2">${p.name}</div>
+    </div>`;
+  });
+  if (canCreate) {
+    html += `<div class="proj-card" onclick="showPage('page-create-project')">
+      <div class="proj-add-btn" style="position:static;width:36px;height:36px;font-size:20px"><i class="bi bi-plus"></i></div>
+    </div>`;
+  }
+  grid.innerHTML = html;
+}
+
+async function openProject(projectId) {
+  showLoading(true);
+  const { data: proj } = await supabase.from('projects').select('*, companies(*)').eq('id', projectId).single();
+  const { data: fps } = await supabase.from('floor_plans').select('*').eq('project_id', projectId);
+  showLoading(false);
+  currentProject = proj;
+  document.getElementById('projDetailTitle').textContent = 'Projecto';
+  document.getElementById('projDetailName').textContent = proj.name;
+  document.getElementById('projDetailDate').textContent = proj.date ? new Date(proj.date).toLocaleDateString('pt') : '';
+  if (proj.image_url) {
+    document.getElementById('projDetailImg').src = proj.image_url;
+    document.getElementById('projDetailImg').style.display = 'block';
+  } else {
+    document.getElementById('projDetailImg').style.display = 'none';
+  }
+  renderFloorPlanTabs(fps || []);
+  showPage('page-project');
+  logActivity('Abriu projecto', 'project', proj.id, proj.id, { name: proj.name });
+}
+
+function renderFloorPlanTabs(fps) {
+  const tabsWrap = document.getElementById('floorPlanTabsWrap');
+  const builderWrap = document.getElementById('floorPlanBuilderWrap');
+  const canEdit = ['master','admin'].includes(currentProfile?.role);
+
+  if (!fps.length) {
+    tabsWrap.innerHTML = '';
+    builderWrap.innerHTML = canEdit
+      ? `<div style="padding:0 16px"><button class="btn-crm btn-purple" onclick="openAddFloorPlanForProject()"><i class="bi bi-plus-circle"></i> Adicionar Planta</button></div>`
+      : `<p style="padding:0 16px;color:var(--text-muted)">Sem plantas ainda.</p>`;
+    return;
+  }
+
+  let tabHtml = fps.map((fp, i) =>
+    `<button class="floor-btn ${i===0?'active-mode':''}" style="${i===0?'background:var(--accent-purple)':''}" onclick="selectFloorPlan('${fp.id}', this)">${fp.name}</button>`
+  ).join('');
+  if (canEdit) tabHtml += `<button class="floor-btn" style="background:var(--bg-card2);padding:10px 16px;font-size:22px" onclick="openAddFloorPlanForProject()"><i class="bi bi-plus"></i></button>`;
+  tabsWrap.innerHTML = tabHtml;
+  currentFP = fps[0];
+  renderFloorPlanBuilder(fps[0], canEdit);
+}
+
+function selectFloorPlan(fpId, btn) {
+  document.querySelectorAll('#floorPlanTabsWrap .floor-btn').forEach(b => {
+    b.classList.remove('active-mode'); b.style.background = 'var(--bg-card2)';
+  });
+  btn.classList.add('active-mode'); btn.style.background = 'var(--accent-purple)';
+  // Find FP in currentProject's fps — reload
+  supabase.from('floor_plans').select('*').eq('id', fpId).single().then(({ data }) => {
+    currentFP = data;
+    const canEdit = ['master','admin'].includes(currentProfile?.role);
+    renderFloorPlanBuilder(data, canEdit);
+  });
+}
+
+async function openAddFloorPlanForProject() {
+  openPopup('addFloorPlanModal');
+  window._fpTargetProject = currentProject.id;
+}
+
+/* ═══ FLOOR PLAN BUILDER ═══ */
+function renderFloorPlanBuilder(fp, canEdit) {
+  const wrap = document.getElementById('floorPlanBuilderWrap');
+  const gridData = fp.grid_data || [];
+  const standsData = fp.stands_data || [];
+  const cols = fp.width_m;
+  const rows = fp.length_m;
+
+  // Build a map for quick lookup
+  const cellMap = {};
+  gridData.forEach(c => { cellMap[`${c.row}-${c.col}`] = c.type; });
+  const standMap = {};
+  standsData.forEach(s => s.cells.forEach(c => { standMap[`${c.row}-${c.col}`] = s.number; }));
+
+  let tableHtml = '<table class="grid-table">';
+  for (let r = 0; r < rows; r++) {
+    tableHtml += '<tr>';
+    for (let c = 0; c < cols; c++) {
+      const key = `${r}-${c}`;
+      const type = cellMap[key];
+      const sNum = standMap[key];
+      let cls = 'grid-cell';
+      if (type === 'corridor') cls += ' corridor';
+      else if (type === 'stand') cls += ' stand-cell';
+      const onclick = canEdit ? `onmousedown="startDraw(${r},${c})" onmouseover="continueDraw(${r},${c})" onmouseup="endDraw()"` : '';
+      const clickFn = !canEdit ? `onclick="clickStand('${fp.id}',${r},${c})"` : '';
+      tableHtml += `<td class="${cls}" data-r="${r}" data-c="${c}" ${onclick} ${clickFn}>
+        ${sNum ? `<span class="stand-number-label ${type==='corridor'?'dark':''}">${sNum}</span>` : ''}
+      </td>`;
+    }
+    tableHtml += '</tr>';
+  }
+  tableHtml += '</table>';
+
+  // Stats
+  const totalStands = standsData.length;
+  const standIds = standsData.map(s => s.id).filter(Boolean);
+
+  let html = `<div class="floor-plan-container"><div class="grid-wrap">${tableHtml}</div></div>`;
+
+  if (canEdit) {
+    const mode = editMode;
+    html += `<div class="floor-controls">
+      <button class="floor-btn ${mode==='corridor'?'active-mode':''}" onclick="setEditMode('corridor',this,'${fp.id}')">CORREDOR</button>
+      <button class="floor-btn ${mode==='stand'?'green':''}${mode==='stand'?' active-mode':''}" onclick="setEditMode('stand',this,'${fp.id}')">STAND</button>
+      ${fp.confirmed ? '' : `<button class="floor-btn purple" onclick="numStands('${fp.id}')">NUMERAR STAND</button>`}
+      ${fp.confirmed ? '<button class="floor-btn green" onclick="saveFloorPlan(\''+fp.id+'\')">CONFIRMAR</button>' : '<button class="floor-btn green" onclick="saveFloorPlan(\''+fp.id+'\')">GUARDAR</button>'}
+    </div>`;
+  }
+
+  // Stands counter (load async)
+  html += `<div class="stands-counter" id="standCounter-${fp.id}">
+    <div class="counter-box green"><div class="count" id="freeCount-${fp.id}">—</div><div class="label">LIVRES</div></div>
+    <div class="counter-box red"><div class="count" id="rentedCount-${fp.id}">—</div><div class="label">VENDIDOS</div></div>
+  </div>`;
+
+  wrap.innerHTML = html;
+
+  // Load stand status
+  loadStandCounts(fp);
+
+  // Mouse tracking for drawing
+  if (canEdit) {
+    wrap.addEventListener('mouseup', endDraw);
+    wrap.addEventListener('touchend', endDraw);
+  }
+}
+
+let _isDrawing = false;
+
+function startDraw(r, c) {
+  if (!editMode) return;
+  _isDrawing = true;
+  applyCell(r, c);
+}
+function continueDraw(r, c) {
+  if (!_isDrawing || !editMode) return;
+  applyCell(r, c);
+}
+function endDraw() { _isDrawing = false; }
+
+function applyCell(r, c) {
+  const cell = document.querySelector(`[data-r="${r}"][data-c="${c}"]`);
+  if (!cell) return;
+  cell.classList.remove('corridor','stand-cell');
+  if (editMode === 'corridor') cell.classList.add('corridor');
+  else if (editMode === 'stand') cell.classList.add('stand-cell');
+}
+
+function setEditMode(mode, btn, fpId) {
+  editMode = editMode === mode ? null : mode;
+  document.querySelectorAll('.floor-btn').forEach(b => {
+    b.classList.remove('active-mode');
+    if (b.textContent.trim() === 'CORREDOR') b.style.background = 'var(--bg-card)';
+    if (b.textContent.trim() === 'STAND')    b.style.background = 'var(--bg-card)';
+  });
+  if (editMode) {
+    btn.classList.add('active-mode');
+    if (mode === 'stand') btn.style.background = 'var(--accent-green)';
+  }
+}
+
+function getGridDataFromDOM() {
+  const cells = document.querySelectorAll('.grid-cell');
+  const gridData = [];
+  cells.forEach(cell => {
+    const r = parseInt(cell.dataset.r), c = parseInt(cell.dataset.c);
+    if (cell.classList.contains('corridor')) gridData.push({ row: r, col: c, type: 'corridor' });
+    else if (cell.classList.contains('stand-cell')) gridData.push({ row: r, col: c, type: 'stand' });
+  });
+  return gridData;
+}
+
+async function numStands(fpId) {
+  const gridData = getGridDataFromDOM();
+  const standCells = gridData.filter(c => c.type === 'stand');
+  if (!standCells.length) { toast('Marque algumas stands primeiro', 'error'); return; }
+
+  // Group connected stand cells into individual stands using flood fill
+  const visited = new Set();
+  const groups = [];
+  standCells.forEach(({ row, col }) => {
+    const key = `${row}-${col}`;
+    if (visited.has(key)) return;
+    const group = [];
+    const stack = [{ row, col }];
+    while (stack.length) {
+      const cur = stack.pop();
+      const k = `${cur.row}-${cur.col}`;
+      if (visited.has(k)) continue;
+      visited.add(k);
+      if (standCells.find(c => c.row === cur.row && c.col === cur.col)) {
+        group.push({ row: cur.row, col: cur.col });
+        [[0,1],[0,-1],[1,0],[-1,0]].forEach(([dr, dc]) => {
+          stack.push({ row: cur.row + dr, col: cur.col + dc });
+        });
+      }
+    }
+    if (group.length) groups.push(group);
+  });
+
+  const standsData = groups.map((cells, i) => ({
+    number: String(i + 1).padStart(2, '0'),
+    cells
+  }));
+
+  // Show numbers on grid
+  const cellEls = document.querySelectorAll('.grid-cell');
+  // Clear old numbers
+  cellEls.forEach(el => el.innerHTML = '');
+  standsData.forEach(s => {
+    const firstCell = s.cells[0];
+    const el = document.querySelector(`[data-r="${firstCell.row}"][data-c="${firstCell.col}"]`);
+    if (el) el.innerHTML = `<span class="stand-number-label">${s.number}</span>`;
+  });
+
+  // Save to DB
+  const { error } = await supabase.from('floor_plans')
+    .update({ stands_data: standsData, grid_data: gridData }).eq('id', fpId);
+  if (error) { toast('Erro: ' + error.message, 'error'); return; }
+  toast('Stands numeradas!', 'success');
+  currentFP.stands_data = standsData;
+
+  // Upsert stands table
+  for (const s of standsData) {
+    await supabase.from('stands').upsert({
+      floor_plan_id: fpId, number: s.number, cells: s.cells, status: 'available'
+    }, { onConflict: 'floor_plan_id,number' });
+  }
+  logActivity('Numerou stands', 'floor_plan', fpId, currentProject?.id, { count: standsData.length });
+}
+
+async function saveFloorPlan(fpId) {
+  const gridData = getGridDataFromDOM();
+  const { error } = await supabase.from('floor_plans')
+    .update({ grid_data: gridData, confirmed: true }).eq('id', fpId);
+  if (error) { toast('Erro: ' + error.message, 'error'); return; }
+  toast('Planta guardada!', 'success');
+  logActivity('Guardou planta', 'floor_plan', fpId, currentProject?.id);
+}
+
+async function loadStandCounts(fp) {
+  const { data: stands } = await supabase.from('stands').select('status').eq('floor_plan_id', fp.id);
+  if (!stands) return;
+  const free = stands.filter(s => s.status === 'available').length;
+  const rented = stands.filter(s => s.status === 'rented').length;
+  const freeEl = document.getElementById(`freeCount-${fp.id}`);
+  const rentedEl = document.getElementById(`rentedCount-${fp.id}`);
+  if (freeEl) freeEl.textContent = String(free).padStart(2, '0');
+  if (rentedEl) rentedEl.textContent = String(rented).padStart(2, '0');
+}
+
+async function clickStand(fpId, r, c) {
+  // Find which stand this cell belongs to
+  const { data: fp } = await supabase.from('floor_plans').select('*').eq('id', fpId).single();
+  if (!fp) return;
+  const standsData = fp.stands_data || [];
+  const stand = standsData.find(s => s.cells.some(cell => cell.row === r && cell.col === c));
+  if (!stand) return;
+
+  // Load DB stand record
+  const { data: dbStand } = await supabase
+    .from('stands').select('*').eq('floor_plan_id', fpId).eq('number', stand.number).single();
+  if (!dbStand) return;
+
+  if (dbStand.status === 'rented') {
+    await openRentedStand(dbStand, fp);
+  } else {
+    await openAvailableStand(dbStand, fp);
+  }
+}
+
+async function openAvailableStand(stand, fp) {
+  const canEdit = ['master','admin'].includes(currentProfile?.role);
+  document.getElementById('standFloorName').textContent = fp.name;
+  document.getElementById('standTitle').textContent = `STAND ${stand.number}`;
+  currentFP = fp;
+
+  const content = document.getElementById('standContent');
+  if (!canEdit) {
+    content.innerHTML = `<div style="padding:16px;color:var(--text-muted)">Esta stand está disponível. Contacte o administrador para efectuar o aluguel.</div>`;
+  } else {
+    content.innerHTML = `
+      <div style="padding:0 16px">
+        <p style="color:var(--text-muted);font-size:14px;margin-bottom:16px">Registar novo aluguel para esta stand.</p>
+        <div class="input-group-crm dark"><i class="bi bi-building"></i><input type="text" id="rsCompany" placeholder="Nome Empresa" required/></div>
+        <div class="input-group-crm dark"><i class="bi bi-tag-fill"></i><input type="text" id="rsNif" placeholder="NIF" required/></div>
+        <div class="input-group-crm dark"><i class="bi bi-envelope-fill"></i><input type="email" id="rsEmail" placeholder="Email Master" required/></div>
+        <div class="input-group-crm dark"><i class="bi bi-telephone-fill"></i><input type="tel" id="rsPhone" placeholder="Número de telefone" required/></div>
+        <div class="input-group-crm dark"><i class="bi bi-geo-alt-fill"></i><input type="text" id="rsCountry" placeholder="País" value="Angola"/></div>
+        <div class="input-group-crm dark"><i class="bi bi-sticky"></i><input type="text" id="rsNotes" placeholder="Notas (opcional)"/></div>
+        <div style="margin-bottom:12px">
+          <div style="font-size:13px;color:var(--text-muted);margin-bottom:8px">Documentos (Comprovativo de Pagamento, etc.)</div>
+          <div class="drop-zone" id="dropZone" onclick="document.getElementById('docsInput').click()">
+            <i class="bi bi-cloud-upload-fill"></i>
+            <p>Arraste ficheiros ou clique para selecionar<br><small>JPG, PNG ou PDF (máx. 20MB cada)</small></p>
+          </div>
+          <input type="file" id="docsInput" multiple accept="image/*,.pdf" style="display:none" onchange="previewDocs(this)"/>
+          <div class="doc-grid" id="docPreviewGrid"></div>
+        </div>
+        <button class="btn-crm btn-green" onclick="saveRental('${stand.id}','${stand.number}')">
+          <i class="bi bi-floppy-fill"></i> REGISTAR ALUGUEL
+        </button>
+      </div>`;
+    setupDropZone();
+  }
+  showPage('page-stand');
+}
+
+async function openRentedStand(stand, fp) {
+  const { data: rental } = await supabase
+    .from('rentals').select('*, rental_documents(*)').eq('stand_id', stand.id).eq('status', 'active').single();
+  currentRental = rental;
+
+  document.getElementById('standFloorName').textContent = fp.name;
+  document.getElementById('standTitle').textContent = `STAND ${stand.number}`;
+
+  const canEdit = ['master','admin'].includes(currentProfile?.role);
+  const docsHtml = (rental?.rental_documents || []).map(d =>
+    `<div class="doc-thumb" onclick="openDoc('${d.file_url}')">
+      ${d.file_type?.startsWith('image') ? `<img src="${d.file_url}" alt="${d.file_name}"/>` : `<i class="bi bi-file-earmark-pdf-fill" style="font-size:30px;color:var(--accent-red)"></i>`}
+    </div>`
+  ).join('');
+
+  const content = document.getElementById('standContent');
+  content.innerHTML = `
+    <div style="padding:0 16px">
+      <div class="info-row"><i class="bi bi-building"></i>${rental?.company_name || '—'}</div>
+      <div class="info-row"><i class="bi bi-tag-fill"></i>NIF: ${rental?.nif || '—'}</div>
+      <div class="info-row"><i class="bi bi-envelope-fill"></i>${rental?.email || '—'}</div>
+      <div class="info-row"><i class="bi bi-telephone-fill"></i>${rental?.phone || '—'}</div>
+      <div class="info-row"><i class="bi bi-geo-alt-fill"></i>${rental?.country || '—'}</div>
+      ${rental?.notes ? `<div class="info-row"><i class="bi bi-sticky"></i>${rental.notes}</div>` : ''}
+    </div>
+    <div style="padding:0 16px;margin-top:10px">
+      <div style="font-size:13px;color:var(--text-muted);margin-bottom:8px">Documentos Anexados</div>
+      ${rental?.rental_documents?.length
+        ? `<div class="doc-grid">${docsHtml}</div>`
+        : `<p style="color:var(--text-muted);font-size:13px">Nenhum documento.</p>`}
+      ${canEdit ? `
+        <button class="btn-crm btn-secondary-crm" style="margin-top:12px" onclick="document.getElementById('addDocInput').click()">
+          <i class="bi bi-paperclip"></i> ADICIONAR DOCUMENTOS
+        </button>
+        <input type="file" id="addDocInput" multiple accept="image/*,.pdf" style="display:none" onchange="addDocsToRental(this,'${rental?.id}')"/>
+        <button class="btn-crm btn-red" style="margin-top:8px" onclick="cancelRental('${rental?.id}','${stand.id}','${stand.number}')">
+          <i class="bi bi-x-circle-fill"></i> CANCELAR ALUGUEL
+        </button>` : `<p style="color:var(--text-muted);font-size:12px;margin-top:10px">Apenas administradores podem alterar este aluguel.</p>`}
+    </div>`;
+
+  showPage('page-stand');
+}
+
+async function saveRental(standId, standNumber) {
+  const company = document.getElementById('rsCompany')?.value.trim();
+  const nif     = document.getElementById('rsNif')?.value.trim();
+  const email   = document.getElementById('rsEmail')?.value.trim();
+  const phone   = document.getElementById('rsPhone')?.value.trim();
+  const country = document.getElementById('rsCountry')?.value.trim() || 'Angola';
+  const notes   = document.getElementById('rsNotes')?.value.trim();
+
+  if (!company || !nif || !email || !phone) { toast('Preencha todos os campos obrigatórios', 'error'); return; }
+  if (!/\S+@\S+\.\S+/.test(email)) { toast('Email inválido', 'error'); return; }
+
+  showLoading(true);
+  const { data: rental, error } = await supabase.from('rentals').insert([{
+    stand_id: standId, company_name: company, nif, email, phone, country, notes,
+    created_by: currentUser.id, status: 'active'
+  }]).select().single();
+
+  if (error) { showLoading(false); toast('Erro: ' + error.message, 'error'); return; }
+
+  // Update stand status
+  await supabase.from('stands').update({ status: 'rented' }).eq('id', standId);
+
+  // Upload documents
+  const files = document.getElementById('docsInput')?.files;
+  if (files && files.length) {
+    for (const file of files) {
+      await uploadRentalDoc(file, rental.id);
+    }
+  }
+
+  showLoading(false);
+  toast('Aluguel registado com sucesso!', 'success');
+  await logActivity('Registou aluguel', 'rental', rental.id, currentProject?.id, { company, stand: standNumber });
+  await sendNotificationToAdmins(`Stand ${standNumber} alugada a ${company}`);
+  goBack();
+  // Refresh floor plan
+  selectFloorPlan(currentFP.id, document.querySelector('.floor-btn.active-mode') || document.querySelector('.floor-btn'));
+}
+
+async function cancelRental(rentalId, standId, standNumber) {
+  showConfirm('Cancelar Aluguel', `Deseja realmente cancelar o aluguel da Stand ${standNumber}?`, async () => {
+    showLoading(true);
+    await supabase.from('rentals').update({ status: 'cancelled', cancelled_by: currentUser.id, cancelled_at: new Date().toISOString() }).eq('id', rentalId);
+    await supabase.from('stands').update({ status: 'available' }).eq('id', standId);
+    showLoading(false);
+    toast('Aluguel cancelado', 'info');
+    await logActivity('Cancelou aluguel', 'rental', rentalId, currentProject?.id, { stand: standNumber });
+    goBack();
+  });
+}
+
+async function addDocsToRental(input, rentalId) {
+  showLoading(true);
+  for (const file of input.files) {
+    await uploadRentalDoc(file, rentalId);
+  }
+  showLoading(false);
+  toast('Documentos adicionados!', 'success');
+  goBack();
+}
+
+async function uploadRentalDoc(file, rentalId) {
+  const ext = file.name.split('.').pop();
+  const path = `${rentalId}/${Date.now()}.${ext}`;
+  const { data: upData, error: upErr } = await supabase.storage.from('documents').upload(path, file);
+  if (upErr) { toast('Erro ao carregar ficheiro: ' + upErr.message, 'error'); return; }
+  const { data: { publicUrl } } = supabase.storage.from('documents').getPublicUrl(path);
+  await supabase.from('rental_documents').insert([{
+    rental_id: rentalId, file_name: file.name, file_url: publicUrl,
+    file_type: file.type, uploaded_by: currentUser.id
+  }]);
+}
+
+/* ═══ SAVE PROJECT ═══ */
+async function saveProject() {
+  const name = document.getElementById('projName').value.trim();
+  const desc = document.getElementById('projDesc').value.trim();
+  const date = document.getElementById('projDate').value;
+  if (!name) { toast('Introduza o nome do projecto', 'error'); return; }
+
+  showLoading(true);
+  const projData = {
+    name, description: desc, date: date || null,
+    company_id: currentProfile?.company_id,
+    created_by: currentUser.id
+  };
+
+  // Upload logo if selected
+  const logoFile = document.getElementById('projLogoInput').files[0];
+  if (logoFile) {
+    const ext = logoFile.name.split('.').pop();
+    const path = `proj-${Date.now()}.${ext}`;
+    await supabase.storage.from('project-images').upload(path, logoFile);
+    const { data: { publicUrl } } = supabase.storage.from('project-images').getPublicUrl(path);
+    projData.image_url = publicUrl;
+  }
+
+  const { data: proj, error } = await supabase.from('projects').insert([projData]).select().single();
+  if (error) { showLoading(false); toast('Erro: ' + error.message, 'error'); return; }
+
+  // Save floor plans
+  for (const fp of tempFPs) {
+    await supabase.from('floor_plans').insert([{
+      project_id: proj.id, name: fp.name, width_m: fp.width, length_m: fp.length
+    }]);
+  }
+  tempFPs = [];
+
+  showLoading(false);
+  toast('Projecto criado!', 'success');
+  await logActivity('Criou projecto', 'project', proj.id, proj.id, { name });
+  loadProjects();
+  showPage('page-home');
+}
+
+/* ═══ FLOOR PLAN MODAL ═══ */
+async function addFloorPlan() {
+  const name = document.getElementById('fpName').value.trim();
+  const w = parseInt(document.getElementById('fpWidth').value);
+  const l = parseInt(document.getElementById('fpLength').value);
+  if (!name || !w || !l) { toast('Preencha todos os campos', 'error'); return; }
+  if (w > 100 || l > 100) { toast('Dimensões máximas: 100m × 100m', 'error'); return; }
+
+  closePopup();
+
+  if (window._fpTargetProject) {
+    // Save directly to existing project
+    showLoading(true);
+    const { data, error } = await supabase.from('floor_plans').insert([{
+      project_id: window._fpTargetProject, name, width_m: w, length_m: l
+    }]).select().single();
+    showLoading(false);
+    if (error) { toast('Erro: ' + error.message, 'error'); return; }
+    window._fpTargetProject = null;
+    toast('Planta adicionada!', 'success');
+    openProject(currentProject.id);
+  } else {
+    // Temp (create project flow)
+    tempFPs.push({ name, width: w, length: l });
+    const grid = document.getElementById('floorPlansGrid');
+    const newCard = document.createElement('div');
+    newCard.className = 'proj-card';
+    newCard.innerHTML = `<div class="proj-name" style="z-index:2">${name}<br><small>${w}×${l}m</small></div>`;
+    grid.insertBefore(newCard, grid.lastElementChild);
+    toast(`Planta "${name}" adicionada`, 'success');
+  }
+}
+
+/* ═══ MY LIST ═══ */
+async function loadMyList() {
+  showLoading(true);
+  const { data: rentals } = await supabase
+    .from('rentals')
+    .select('*, stands(number, floor_plan_id, floor_plans(name, project_id, projects(name)))')
+    .order('created_at', { ascending: false });
+  showLoading(false);
+  window._allRentals = rentals || [];
+  filterList();
+}
+
+function filterList() {
+  const search = document.getElementById('listSearch')?.value.toLowerCase() || '';
+  const filter = document.getElementById('listFilter')?.value || 'all';
+  const rentals = (window._allRentals || []).filter(r => {
+    const matchSearch = r.company_name.toLowerCase().includes(search) ||
+      r.stands?.number?.includes(search) || r.email.toLowerCase().includes(search);
+    const matchFilter = filter === 'all' || r.status === filter;
+    return matchSearch && matchFilter;
+  });
+  renderMyList(rentals);
+}
+
+function renderMyList(rentals) {
+  const el = document.getElementById('myListContent');
+  if (!rentals.length) {
+    el.innerHTML = `<p style="padding:16px;color:var(--text-muted)">Nenhum resultado encontrado.</p>`;
+    return;
+  }
+  el.innerHTML = rentals.map(r => {
+    const stand = r.stands;
+    const proj = stand?.floor_plans?.projects;
+    return `<div class="client-card" onclick="openRentalDetail('${r.id}')">
+      <div class="stand-badge ${r.status==='active'?'':'rented'}">S${stand?.number || '??'}</div>
+      <div class="client-info">
+        <h6>${r.company_name}</h6>
+        <p>${stand?.floor_plans?.name || ''} • ${proj?.name || ''}</p>
+        <p style="color:${r.status==='active'?'var(--accent-green)':'var(--accent-red)'}">
+          ${r.status === 'active' ? 'Activo' : 'Cancelado'}
+        </p>
+      </div>
+      <i class="bi bi-chevron-right" style="color:var(--text-label);margin-left:auto"></i>
+    </div>`;
+  }).join('');
+}
+
+async function openRentalDetail(rentalId) {
+  showLoading(true);
+  const { data: rental } = await supabase
+    .from('rentals')
+    .select('*, stands(number, floor_plans(name, projects(name))), rental_documents(*)')
+    .eq('id', rentalId).single();
+  showLoading(false);
+  currentRental = rental;
+
+  const canEdit = ['master','admin'].includes(currentProfile?.role);
+  const stand = rental?.stands;
+  const fp = stand?.floor_plans;
+  const proj = fp?.projects;
+
+  const docsHtml = (rental?.rental_documents || []).map(d =>
+    `<div class="doc-thumb" onclick="openDoc('${d.file_url}')">
+      ${d.file_type?.startsWith('image') ? `<img src="${d.file_url}" alt="${d.file_name}"/>` : `<i class="bi bi-file-earmark-pdf-fill" style="font-size:30px;color:var(--accent-red)"></i>`}
+      ${canEdit ? `<div class="del-btn" onclick="event.stopPropagation();deleteDoc('${d.id}','${rentalId}')"><i class="bi bi-x"></i></div>` : ''}
+    </div>`
+  ).join('');
+
+  const el = document.getElementById('rentalDetailContent');
+  el.innerHTML = `
+    <div style="padding:0 16px;margin-bottom:4px">
+      <div class="tag-badge"><i class="bi bi-layers-fill"></i>${proj?.name || '—'}</div>
+      <div style="font-size:13px;color:var(--text-muted);margin-top:6px">${fp?.name || ''} • Stand ${stand?.number || ''}</div>
+    </div>
+    <div class="page-title" style="font-size:22px">${rental?.company_name}</div>
+    <div style="padding:0 16px">
+      ${canEdit ? `
+        <div class="input-group-crm dark"><i class="bi bi-building"></i><input type="text" id="rdCompany" value="${rental?.company_name||''}"/></div>
+        <div class="input-group-crm dark"><i class="bi bi-tag-fill"></i><input type="text" id="rdNif" value="${rental?.nif||''}"/></div>
+        <div class="input-group-crm dark"><i class="bi bi-envelope-fill"></i><input type="email" id="rdEmail" value="${rental?.email||''}"/></div>
+        <div class="input-group-crm dark"><i class="bi bi-telephone-fill"></i><input type="tel" id="rdPhone" value="${rental?.phone||''}"/></div>
+        <div class="input-group-crm dark"><i class="bi bi-geo-alt-fill"></i><input type="text" id="rdCountry" value="${rental?.country||'Angola'}"/></div>
+      ` : `
+        <div class="info-row"><i class="bi bi-tag-fill"></i>NIF: ${rental?.nif||'—'}</div>
+        <div class="info-row"><i class="bi bi-envelope-fill"></i>${rental?.email||'—'}</div>
+        <div class="info-row"><i class="bi bi-telephone-fill"></i>${rental?.phone||'—'}</div>
+        <div class="info-row"><i class="bi bi-geo-alt-fill"></i>${rental?.country||'—'}</div>
+      `}
+    </div>
+    <div style="padding:0 16px;margin-top:8px">
+      <div style="font-size:13px;color:var(--text-muted);margin-bottom:8px;font-weight:600">DOCUMENTOS</div>
+      ${rental?.rental_documents?.length ? `<div class="doc-grid">${docsHtml}</div>` : `<p style="color:var(--text-muted);font-size:13px">Sem documentos.</p>`}
+      ${canEdit ? `
+        <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">
+          <button class="btn-crm btn-green" style="flex:1;min-width:120px" onclick="saveRentalEdits('${rental?.id}')">
+            <i class="bi bi-floppy-fill"></i> GUARDAR
+          </button>
+          <button class="btn-crm btn-secondary-crm" style="flex:1;min-width:120px" onclick="document.getElementById('rdDocInput').click()">
+            <i class="bi bi-paperclip"></i> ANEXAR
+          </button>
+        </div>
+        <input type="file" id="rdDocInput" multiple accept="image/*,.pdf" style="display:none" onchange="addDocsToRental(this,'${rental?.id}')"/>
+        ${rental?.status === 'active' ? `
+          <button class="btn-crm btn-red" style="margin-top:8px" onclick="cancelRentalFromList('${rental?.id}','${rental?.stands?.id}','${stand?.number}')">
+            <i class="bi bi-x-circle-fill"></i> CANCELAR ALUGUEL
+          </button>` : ''}
+      ` : `
+        <p style="font-size:12px;color:var(--text-muted);margin-top:10px">Para alterações, contacte o administrador.</p>
+        <button class="btn-crm btn-secondary-crm" style="margin-top:8px" onclick="requestChange('${rental?.id}')">
+          <i class="bi bi-envelope-fill"></i> SOLICITAR ALTERAÇÃO
+        </button>
+      `}
+    </div>`;
+
+  showPage('page-rental-detail');
+}
+
+async function saveRentalEdits(rentalId) {
+  const data = {
+    company_name: document.getElementById('rdCompany')?.value.trim(),
+    nif:          document.getElementById('rdNif')?.value.trim(),
+    email:        document.getElementById('rdEmail')?.value.trim(),
+    phone:        document.getElementById('rdPhone')?.value.trim(),
+    country:      document.getElementById('rdCountry')?.value.trim(),
+  };
+  showLoading(true);
+  const { error } = await supabase.from('rentals').update(data).eq('id', rentalId);
+  showLoading(false);
+  if (error) { toast('Erro: ' + error.message, 'error'); return; }
+  toast('Informações actualizadas!', 'success');
+  await logActivity('Actualizou aluguel', 'rental', rentalId);
+}
+
+async function cancelRentalFromList(rentalId, standId, standNumber) {
+  showConfirm('Cancelar Aluguel', `Confirmar cancelamento do aluguel da Stand ${standNumber}?`, async () => {
+    await supabase.from('rentals').update({ status: 'cancelled', cancelled_by: currentUser.id, cancelled_at: new Date().toISOString() }).eq('id', rentalId);
+    await supabase.from('stands').update({ status: 'available' }).eq('id', standId);
+    toast('Aluguel cancelado', 'info');
+    await logActivity('Cancelou aluguel', 'rental', rentalId, null, { stand: standNumber });
+    goBack();
+    loadMyList();
+  });
+}
+
+async function deleteDoc(docId, rentalId) {
+  showConfirm('Eliminar Documento', 'Tem a certeza que deseja eliminar este documento?', async () => {
+    await supabase.from('rental_documents').delete().eq('id', docId);
+    toast('Documento eliminado', 'info');
+    openRentalDetail(rentalId);
+  });
+}
+
+async function requestChange(rentalId) {
+  await supabase.from('messages').insert([{
+    from_user_id: currentUser.id,
+    body: `Solicitação de alteração para o aluguel ID: ${rentalId}`,
+    subject: 'Solicitação de Alteração'
+  }]);
+  toast('Solicitação enviada ao administrador', 'success');
+}
+
+/* ═══ MESSAGES ═══ */
+async function loadMessages() {
+  const { data: msgs } = await supabase
+    .from('messages')
+    .select('*, profiles!from_user_id(full_name, avatar_url)')
+    .or(`to_user_id.eq.${currentUser.id},to_user_id.is.null`)
+    .order('created_at', { ascending: false });
+
+  const el = document.getElementById('messagesList');
+  if (!msgs?.length) { el.innerHTML = `<p style="color:var(--text-muted);text-align:center;margin-top:40px">Sem mensagens.</p>`; return; }
+
+  el.innerHTML = msgs.map(m => `
+    <div class="msg-item ${!m.read ? 'msg-unread' : ''}" onclick="openMessageDetail('${m.id}')">
+      <div class="msg-avatar">
+        ${m.profiles?.avatar_url ? `<img src="${m.profiles.avatar_url}"/>` : `<i class="bi bi-person" style="font-size:22px"></i>`}
+      </div>
+      <div class="msg-body">
+        <div class="msg-name">${m.profiles?.full_name || 'Sistema'}</div>
+        <div class="msg-preview">${m.subject ? `<strong>${m.subject}</strong>: ` : ''}${m.body}</div>
+      </div>
+      <div class="msg-time">${formatTime(m.created_at)}</div>
+    </div>`).join('');
+}
+
+async function openMessageDetail(msgId) {
+  currentMsgId = msgId;
+  const { data: msg } = await supabase.from('messages').select('*, profiles!from_user_id(full_name, avatar_url)').eq('id', msgId).single();
+  // Mark as read
+  await supabase.from('messages').update({ read: true }).eq('id', msgId);
+
+  const el = document.getElementById('msgDetailContent');
+  el.innerHTML = `
+    <div class="msg-item" style="padding:12px 0">
+      <div class="msg-avatar">
+        ${msg.profiles?.avatar_url ? `<img src="${msg.profiles.avatar_url}"/>` : `<i class="bi bi-person" style="font-size:22px"></i>`}
+      </div>
+      <div class="msg-body">
+        <div class="msg-name">${msg.profiles?.full_name || 'Sistema'}</div>
+        <div class="msg-preview">${formatTime(msg.created_at)}</div>
+      </div>
+    </div>
+    ${msg.subject ? `<div style="font-family:var(--font-display);font-size:20px;font-weight:700;margin-bottom:10px">${msg.subject}</div>` : ''}
+    <div style="background:var(--bg-card2);border-radius:12px;padding:16px;font-size:15px;line-height:1.6">${msg.body}</div>`;
+  showPage('page-message-detail');
+}
+
+async function sendReply() {
+  const body = document.getElementById('replyInput').value.trim();
+  if (!body) return;
+  const { data: orig } = await supabase.from('messages').select('from_user_id').eq('id', currentMsgId).single();
+  await supabase.from('messages').insert([{
+    from_user_id: currentUser.id, to_user_id: orig?.from_user_id,
+    body, parent_id: currentMsgId
+  }]);
+  document.getElementById('replyInput').value = '';
+  toast('Resposta enviada!', 'success');
+}
+
+async function openNewMessage() {
+  // Populate user list
+  const { data: users } = await supabase.from('profiles').select('id, full_name').eq('active', true);
+  const sel = document.getElementById('msgToUser');
+  sel.innerHTML = '<option value="">Todos (broadcast)</option>' +
+    (users || []).filter(u => u.id !== currentUser.id).map(u =>
+      `<option value="${u.id}">${u.full_name}</option>`).join('');
+  openPopup('newMsgModal');
+}
+
+async function sendNewMessage() {
+  const toId = document.getElementById('msgToUser').value || null;
+  const subj = document.getElementById('msgSubject').value.trim();
+  const body = document.getElementById('msgBody').value.trim();
+  if (!body) { toast('Escreva uma mensagem', 'error'); return; }
+  await supabase.from('messages').insert([{ from_user_id: currentUser.id, to_user_id: toId, subject: subj, body }]);
+  closePopup();
+  toast('Mensagem enviada!', 'success');
+  loadMessages();
+}
+
+/* ═══ NOTIFICATIONS ═══ */
+async function loadNotifications() {
+  const { data } = await supabase.from('notifications').select('*')
+    .eq('user_id', currentUser.id).order('created_at', { ascending: false });
+  const el = document.getElementById('notificationsList');
+  if (!data?.length) { el.innerHTML = `<p style="color:var(--text-muted);text-align:center;margin-top:40px">Sem notificações.</p>`; return; }
+  el.innerHTML = data.map(n => `
+    <div style="background:${n.read?'var(--bg-card2)':'rgba(104,50,227,.12)'};border:1px solid ${n.read?'var(--border)':'var(--accent-purple)'};border-radius:12px;padding:14px;margin-bottom:10px;cursor:pointer" onclick="markNotifRead('${n.id}')">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
+        <i class="bi bi-${n.type==='success'?'check-circle-fill':n.type==='error'?'x-circle-fill':'bell-fill'}" style="color:${n.type==='success'?'var(--accent-green)':n.type==='error'?'var(--accent-red)':'var(--accent-purple)'}"></i>
+        <strong style="font-size:14px">${n.title}</strong>
+        <span style="font-size:11px;color:var(--text-label);margin-left:auto">${formatTime(n.created_at)}</span>
+      </div>
+      <p style="font-size:13px;color:var(--text-muted);margin:0">${n.message}</p>
+    </div>`).join('');
+}
+
+async function markNotifRead(id) {
+  await supabase.from('notifications').update({ read: true }).eq('id', id);
+  loadBadges();
+}
+
+async function loadBadges() {
+  const { count: nCount } = await supabase.from('notifications').select('*', { count: 'exact', head: true }).eq('user_id', currentUser.id).eq('read', false);
+  const { count: mCount } = await supabase.from('messages').select('*', { count: 'exact', head: true }).eq('to_user_id', currentUser.id).eq('read', false);
+  document.getElementById('notifDot').classList.toggle('show', nCount > 0);
+  document.getElementById('msgDot').classList.toggle('show', mCount > 0);
+}
+
+async function sendNotificationToAdmins(message) {
+  const { data: admins } = await supabase.from('profiles').select('id').in('role', ['master','admin']);
+  if (!admins) return;
+  await supabase.from('notifications').insert(
+    admins.map(a => ({ user_id: a.id, title: 'Novo Aluguel', message, type: 'success' }))
+  );
+}
+
+/* ═══ ACTIVE USERS ═══ */
+async function loadUsers() {
+  showLoading(true);
+  const filter = document.getElementById('userFilterStatus')?.value || 'all';
+  let query = supabase.from('profiles').select('*, companies(name)').order('created_at', { ascending: false });
+  if (filter === 'active') query = query.eq('active', true);
+  else if (filter === 'inactive') query = query.eq('active', false);
+  const { data: users } = await query;
+  allUsers = users || [];
+  showLoading(false);
+  const el = document.getElementById('activeUsersList');
+  el.innerHTML = (users || []).map(u => `
+    <div class="active-user-row" onclick="viewUserActivity('${u.id}','${u.full_name}')">
+      <div class="status-dot ${u.active ? 'online' : 'offline'}"></div>
+      <div style="width:40px;height:40px;border-radius:50%;background:var(--bg-card);display:flex;align-items:center;justify-content:center;overflow:hidden;flex-shrink:0">
+        ${u.avatar_url ? `<img src="${u.avatar_url}" style="width:100%;height:100%;object-fit:cover"/>` : `<i class="bi bi-person" style="font-size:18px"></i>`}
+      </div>
+      <div style="flex:1;min-width:0">
+        <div style="font-weight:600;font-size:14px">${u.full_name}</div>
+        <div style="font-size:12px;color:var(--text-muted)">${u.email}</div>
+        <div style="font-size:11px;color:var(--text-label)">${roleLabel(u.role)} • ${u.companies?.name || '—'}</div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:6px;align-items:flex-end">
+        ${['master','admin'].includes(currentProfile?.role) ? `
+          <button class="btn-crm btn-secondary-crm" style="padding:4px 10px;font-size:11px;width:auto;margin:0" onclick="event.stopPropagation();toggleUserActive('${u.id}',${u.active})">
+            ${u.active ? 'Desativar' : 'Ativar'}
+          </button>` : ''}
+      </div>
+    </div>`).join('');
+}
+
+async function toggleUserActive(userId, current) {
+  await supabase.from('profiles').update({ active: !current }).eq('id', userId);
+  toast(current ? 'Utilizador desativado' : 'Utilizador ativado', 'info');
+  loadUsers();
+}
+
+async function viewUserActivity(userId, name) {
+  showLoading(true);
+  const { data: logs } = await supabase
+    .from('activity_log').select('*').eq('user_id', userId).order('created_at', { ascending: false }).limit(50);
+  showLoading(false);
+  document.getElementById('userActivityTitle').textContent = name;
+  const el = document.getElementById('userActivityList');
+  if (!logs?.length) { el.innerHTML = `<p style="color:var(--text-muted)">Sem actividade registada.</p>`; return; }
+  el.innerHTML = logs.map(l => `
+    <div style="background:var(--bg-card2);border:1px solid var(--border);border-radius:10px;padding:12px;margin-bottom:8px">
+      <div style="display:flex;justify-content:space-between;margin-bottom:4px">
+        <strong style="font-size:13px">${l.action}</strong>
+        <span style="font-size:11px;color:var(--text-label)">${formatTime(l.created_at)}</span>
+      </div>
+      ${l.entity_type ? `<span class="tag-badge" style="font-size:10px">${l.entity_type}</span>` : ''}
+      ${l.details && Object.keys(l.details).length ? `<p style="font-size:12px;color:var(--text-muted);margin:4px 0 0">${JSON.stringify(l.details).replace(/[{}"]/g,'')}</p>` : ''}
+    </div>`).join('');
+  showPage('page-user-activity');
+}
+
+/* ═══ NOMEAR USER ═══ */
+async function openNomearUser() {
+  showLoading(true);
+  const compId = currentProfile?.company_id || currentProject?.company_id;
+  const { data: users } = await supabase.from('profiles').select('*').eq('company_id', compId).neq('id', currentUser.id);
+  const { data: members } = await supabase.from('project_members').select('*').eq('project_id', currentProject.id);
+  showLoading(false);
+  allUsers = users || [];
+  const memberMap = {};
+  (members || []).forEach(m => { memberMap[m.user_id] = m.role; });
+
+  const el = document.getElementById('nomearList');
+  el.innerHTML = (users || []).map(u => `
+    <div class="user-row">
+      <div class="user-avatar">${u.avatar_url ? `<img src="${u.avatar_url}"/>` : `<i class="bi bi-person" style="font-size:22px"></i>`}</div>
+      <div class="user-input-wrap">
+        <div class="input-group-crm dark" style="margin-bottom:4px"><i class="bi bi-envelope-fill"></i><input type="email" value="${u.email}" disabled style="opacity:.7"/></div>
+        <div class="user-role-label">
+          <button class="role-toggle ${memberMap[u.id]==='admin'?'admin':''}" 
+            data-uid="${u.id}" data-role="${memberMap[u.id]||'collaborator'}"
+            onclick="toggleRole(this)">
+            ${memberMap[u.id]==='admin'?'Administrador':'Colaborador'}
+          </button>
+        </div>
+      </div>
+    </div>`).join('');
+  showPage('page-nomear');
+}
+
+function toggleRole(btn) {
+  const cur = btn.dataset.role;
+  const next = cur === 'admin' ? 'collaborator' : 'admin';
+  btn.dataset.role = next;
+  btn.textContent = next === 'admin' ? 'Administrador' : 'Colaborador';
+  btn.classList.toggle('admin', next === 'admin');
+}
+
+async function saveProjectMembers() {
+  showLoading(true);
+  const btns = document.querySelectorAll('#nomearList .role-toggle');
+  for (const btn of btns) {
+    const uid = btn.dataset.uid;
+    const role = btn.dataset.role;
+    await supabase.from('project_members').upsert({
+      project_id: currentProject.id, user_id: uid, role
+    }, { onConflict: 'project_id,user_id' });
+  }
+  showLoading(false);
+  toast('Equipa actualizada!', 'success');
+  goBack();
+}
+
+/* ═══ ACCOUNT ═══ */
+async function loadAccountPage() {
+  if (!currentProfile) return;
+  const p = currentProfile;
+  document.getElementById('profileName').textContent = p.full_name || '—';
+  document.getElementById('profileRole').textContent = roleLabel(p.role);
+  document.getElementById('profileCompany').innerHTML = `<i class="bi bi-building"></i> ${p.companies?.name || '—'}`;
+  document.getElementById('accName').value = p.full_name || '';
+  document.getElementById('accPhone').value = p.phone || '';
+  document.getElementById('accEmail').value = p.email || '';
+
+  const avatarWrap = document.getElementById('profileAvatarWrap');
+  if (p.avatar_url) {
+    avatarWrap.innerHTML = `<img src="${p.avatar_url}" style="width:100%;height:100%;object-fit:cover;border-radius:50%"/>
+      <div class="edit-overlay"><i class="bi bi-camera-fill" style="font-size:22px"></i></div>`;
+  }
+
+  // Company info
+  if (p.companies) {
+    const c = p.companies;
+    document.getElementById('companyInfo').innerHTML = `
+      <div class="info-row"><i class="bi bi-building"></i>${c.name}</div>
+      <div class="info-row"><i class="bi bi-tag-fill"></i>NIF: ${c.nif}</div>
+      ${c.email ? `<div class="info-row"><i class="bi bi-envelope-fill"></i>${c.email}</div>` : ''}
+      ${c.phone ? `<div class="info-row"><i class="bi bi-telephone-fill"></i>${c.phone}</div>` : ''}
+      <div class="info-row"><i class="bi bi-geo-alt-fill"></i>${c.country}</div>`;
+  }
+
+  // Projects
+  let projQuery = supabase.from('projects').select('name,id').order('created_at', { ascending: false });
+  if (p.role !== 'master') {
+    const { data: memb } = await supabase.from('project_members').select('project_id').eq('user_id', currentUser.id);
+    const ids = (memb || []).map(m => m.project_id);
+    if (ids.length) projQuery = projQuery.in('id', ids);
+  } else {
+    projQuery = projQuery.eq('company_id', p.company_id);
+  }
+  const { data: myProjs } = await projQuery.limit(5);
+  document.getElementById('accountProjects').innerHTML = (myProjs || []).map(pr => `
+    <div class="setting-row" onclick="openProject('${pr.id}')">
+      <div class="sr-left"><i class="bi bi-folder-fill"></i>${pr.name}</div>
+      <i class="bi bi-chevron-right" style="color:var(--text-label)"></i>
+    </div>`).join('') || `<p style="color:var(--text-muted);font-size:13px">Sem projectos.</p>`;
+
+  if (['master','admin'].includes(p.role)) {
+    document.getElementById('adminAccountSection').style.display = 'block';
+  }
+}
+
+async function saveAccount() {
+  const name  = document.getElementById('accName').value.trim();
+  const phone = document.getElementById('accPhone').value.trim();
+  if (!name) { toast('Introduza o seu nome', 'error'); return; }
+  showLoading(true);
+  const { error } = await supabase.from('profiles').update({ full_name: name, phone }).eq('id', currentUser.id);
+  showLoading(false);
+  if (error) { toast('Erro: ' + error.message, 'error'); return; }
+  currentProfile.full_name = name;
+  currentProfile.phone = phone;
+  updateHeaderUI();
+  toast('Perfil actualizado!', 'success');
+}
+
+async function uploadAvatar(input) {
+  const file = input.files[0]; if (!file) return;
+  showLoading(true);
+  const ext = file.name.split('.').pop();
+  const path = `avatar-${currentUser.id}.${ext}`;
+  await supabase.storage.from('avatars').upload(path, file, { upsert: true });
+  const { data: { publicUrl } } = supabase.storage.from('avatars').getPublicUrl(path);
+  await supabase.from('profiles').update({ avatar_url: publicUrl }).eq('id', currentUser.id);
+  currentProfile.avatar_url = publicUrl;
+  showLoading(false);
+  toast('Foto actualizada!', 'success');
+  loadAccountPage();
+  updateHeaderUI();
+}
+
+async function updateProjImage(input) {
+  const file = input.files[0]; if (!file || !currentProject) return;
+  showLoading(true);
+  const ext = file.name.split('.').pop();
+  const path = `proj-${currentProject.id}.${ext}`;
+  await supabase.storage.from('project-images').upload(path, file, { upsert: true });
+  const { data: { publicUrl } } = supabase.storage.from('project-images').getPublicUrl(path);
+  await supabase.from('projects').update({ image_url: publicUrl }).eq('id', currentProject.id);
+  document.getElementById('projDetailImg').src = publicUrl;
+  document.getElementById('projDetailImg').style.display = 'block';
+  showLoading(false);
+  toast('Imagem actualizada!', 'success');
+}
+
+/* ═══ CREATE USER ═══ */
+function openCreateUserModal() { openPopup('createUserModal'); }
+
+async function createUser() {
+  const name  = document.getElementById('cuName').value.trim();
+  const email = document.getElementById('cuEmail').value.trim();
+  const phone = document.getElementById('cuPhone').value.trim();
+  const pass  = document.getElementById('cuPass').value;
+  const role  = document.getElementById('cuRole').value;
+  if (!name || !email || !pass) { toast('Preencha todos os campos', 'error'); return; }
+  if (pass.length < 6) { toast('Senha mínima: 6 caracteres', 'error'); return; }
+
+  showLoading(true);
+  const { data, error } = await supabase.auth.admin.createUser({
+    email, password: pass,
+    user_metadata: { full_name: name, role },
+    email_confirm: true
+  });
+
+  // Fallback: use signUp (only works without email confirmation)
+  if (error) {
+    const { data: d2, error: e2 } = await supabase.auth.signUp({
+      email, password: pass, options: { data: { full_name: name, role } }
+    });
+    if (e2) { showLoading(false); toast('Erro: ' + e2.message, 'error'); return; }
+  }
+
+  // Update profile
+  await supabase.from('profiles').update({ full_name: name, phone, role, company_id: currentProfile?.company_id }).eq('email', email);
+
+  showLoading(false);
+  closePopup();
+  toast('Utilizador criado!', 'success');
+  await logActivity('Criou utilizador', 'user', null, null, { name, email, role });
+  loadUsers();
+}
+
+/* ═══ CHANGE PASSWORD ═══ */
+function openChangePassword() { openPopup('changePassModal'); }
+
+async function changePassword() {
+  const p1 = document.getElementById('newPass1').value;
+  const p2 = document.getElementById('newPass2').value;
+  if (!p1 || !p2) { toast('Preencha ambos os campos', 'error'); return; }
+  if (p1 !== p2) { toast('As senhas não coincidem', 'error'); return; }
+  if (p1.length < 6) { toast('Mínimo 6 caracteres', 'error'); return; }
+  showLoading(true);
+  const { error } = await supabase.auth.updateUser({ password: p1 });
+  showLoading(false);
+  if (error) { toast('Erro: ' + error.message, 'error'); return; }
+  closePopup();
+  toast('Senha alterada com sucesso!', 'success');
+}
+
+/* ═══ ACTIVITY LOG ═══ */
+async function logActivity(action, entityType, entityId, projectId, details = {}) {
+  try {
+    await supabase.rpc('log_activity', {
+      p_action: action,
+      p_entity_type: entityType,
+      p_entity_id: entityId,
+      p_project_id: projectId,
+      p_details: details
+    });
+  } catch (e) { /* silent fail */ }
+}
+
+/* ═══ HELPERS ═══ */
+function openPopup(modalId) {
+  document.getElementById('popupOverlay').style.display = 'block';
+  document.getElementById(modalId).style.display = 'block';
+}
+function closePopup() {
+  document.getElementById('popupOverlay').style.display = 'none';
+  document.querySelectorAll('.stand-popup').forEach(p => p.style.display = 'none');
+}
+function openAddFloorPlan() { openPopup('addFloorPlanModal'); window._fpTargetProject = null; }
+
+function showConfirm(title, msg, cb) {
+  document.getElementById('confirmTitle').textContent = title;
+  document.getElementById('confirmMessage').textContent = msg;
+  confirmCallback = cb;
+  document.getElementById('confirmDialog').style.display = 'flex';
+}
+function confirmOk() { document.getElementById('confirmDialog').style.display = 'none'; if (confirmCallback) confirmCallback(); confirmCallback = null; }
+function confirmCancel() { document.getElementById('confirmDialog').style.display = 'none'; confirmCallback = null; }
+
+function showLoading(show) { document.getElementById('loadingFull').style.display = show ? 'flex' : 'none'; }
+
+function toast(msg, type = 'info') {
+  const el = document.createElement('div');
+  el.className = `crm-toast ${type}`;
+  const icon = type === 'success' ? 'check-circle-fill' : type === 'error' ? 'x-circle-fill' : 'info-circle-fill';
+  el.innerHTML = `<i class="bi bi-${icon}"></i>${msg}`;
+  document.getElementById('toastContainer').appendChild(el);
+  setTimeout(() => el.remove(), 3500);
+}
+
+function togglePass(inputId, btn) {
+  const input = document.getElementById(inputId);
+  input.type = input.type === 'password' ? 'text' : 'password';
+  btn.className = `bi bi-${input.type === 'password' ? 'eye' : 'eye-slash'} toggle-pass`;
+  btn.style.cursor = 'pointer'; btn.style.color = 'var(--text-label)';
+}
+
+function formatTime(iso) {
+  if (!iso) return '';
+  const d = new Date(iso);
+  const now = new Date();
+  const diff = now - d;
+  if (diff < 60000) return 'agora';
+  if (diff < 3600000) return `${Math.floor(diff/60000)}m`;
+  if (diff < 86400000) return `${Math.floor(diff/3600000)}h`;
+  return d.toLocaleDateString('pt');
+}
+
+function roleLabel(role) {
+  return { master: 'Master', admin: 'Administrador', collaborator: 'Colaborador' }[role] || role;
+}
+
+function openDoc(url) { window.open(url, '_blank'); }
+
+function previewLogo(input) {
+  const file = input.files[0]; if (!file) return;
+  const img = document.getElementById('projLogoImg');
+  img.src = URL.createObjectURL(file);
+  img.style.display = 'block';
+  document.querySelector('#projLogoPreview .proj-add-btn').style.display = 'none';
+}
+
+let _docsFiles = [];
+function previewDocs(input) {
+  _docsFiles = Array.from(input.files);
+  const grid = document.getElementById('docPreviewGrid');
+  grid.innerHTML = _docsFiles.map((f, i) => `
+    <div class="doc-thumb">
+      ${f.type.startsWith('image') ? `<img src="${URL.createObjectURL(f)}"/>` : `<i class="bi bi-file-earmark-pdf-fill" style="font-size:28px;color:var(--accent-red)"></i>`}
+    </div>`).join('');
+}
+
+function setupDropZone() {
+  const dz = document.getElementById('dropZone');
+  if (!dz) return;
+  dz.addEventListener('dragover', e => { e.preventDefault(); dz.classList.add('dragover'); });
+  dz.addEventListener('dragleave', () => dz.classList.remove('dragover'));
+  dz.addEventListener('drop', e => {
+    e.preventDefault(); dz.classList.remove('dragover');
+    const dt = new DataTransfer();
+    Array.from(e.dataTransfer.files).forEach(f => dt.items.add(f));
+    document.getElementById('docsInput').files = dt.files;
+    previewDocs(document.getElementById('docsInput'));
+  });
+}
+
+// Page-specific loaders on show
+const pageLoaders = {
+  'page-messages':     loadMessages,
+  'page-notifications':loadNotifications,
+  'page-mylist':       loadMyList,
+  'page-active-users': loadUsers,
+  'page-account':      loadAccountPage,
+  'page-home':         loadProjects,
+};
+
+const origShowPage = showPage;
+// Override to call page loaders
+window.showPage = function(id, pushHistory = true) {
+  origShowPage(id, pushHistory);
+  if (currentUser && pageLoaders[id]) pageLoaders[id]();
+  // sync nav
+  document.querySelectorAll('.nav-item').forEach(b => {
+    b.classList.toggle('active', b.dataset.page === id);
+  });
+};
+</script>
+</body>
+</html>
