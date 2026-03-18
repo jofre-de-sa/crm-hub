@@ -492,9 +492,103 @@ body{font-family:var(--font-body);color:var(--text-primary);-webkit-font-smoothi
   font-size:12px;color:var(--text-muted);margin:10px 16px 0;
 }
 .info-banner i{color:rgba(255,100,0,.8);font-size:18px;flex-shrink:0}
+
+/* ═══════════════════════════════════════════
+   DESKTOP RESPONSIVE LAYOUT
+═══════════════════════════════════════════ */
+@media (min-width: 768px) {
+  :root { --nav-h: 60px; }
+
+  body { display:flex; justify-content:center; background:#020b28; }
+
+  /* Centre app in a card on desktop */
+  .page {
+    max-width: 480px;
+    left: 50%;
+    right: auto;
+    transform: translateX(-50%);
+    border-left: 1px solid rgba(255,255,255,.06);
+    border-right: 1px solid rgba(255,255,255,.06);
+    box-shadow: 0 0 80px rgba(0,0,0,.8);
+  }
+
+  /* Desktop sidebar nav instead of bottom nav */
+  .bottom-nav {
+    position: fixed;
+    left: 50%;
+    bottom: 0;
+    transform: translateX(-50%);
+    width: 480px;
+    border-radius: 0;
+    border-left: 1px solid rgba(255,255,255,.06);
+    border-right: 1px solid rgba(255,255,255,.06);
+  }
+
+  /* Desktop: wider modals */
+  .stand-popup { max-width: 440px; }
+
+  /* Login page centred */
+  #page-login, #page-register, #page-forgot, #page-splash {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+  }
+
+  /* Better form cards on desktop */
+  .form-card { margin: 0 24px; }
+
+  /* Grid adjustments */
+  .projects-grid { grid-template-columns: repeat(3, 1fr); }
+
+  /* Toast positioning */
+  .toast-container { top: 24px; }
+
+  /* Bigger click targets */
+  .grid-cell { width: 28px; height: 28px; }
+}
+
+@media (min-width: 1024px) {
+  /* Wide desktop: show decorative side panels */
+  body::before, body::after {
+    content: '';
+    position: fixed;
+    top: 0; bottom: 0;
+    width: calc((100vw - 480px) / 2);
+    background: radial-gradient(ellipse at center, rgba(104,50,227,.08) 0%, transparent 70%);
+    pointer-events: none;
+  }
+  body::before { left: 0; }
+  body::after  { right: 0; }
+
+  /* Side brand text on wide screens */
+  .desktop-brand {
+    display: flex !important;
+    position: fixed;
+    left: calc((100vw - 480px) / 4 - 80px);
+    top: 50%;
+    transform: translateY(-50%);
+    flex-direction: column;
+    align-items: center;
+    gap: 16px;
+    opacity: .4;
+    pointer-events: none;
+  }
+}
+
 </style>
 </head>
 <body>
+
+
+<!-- Desktop decorative brand panel -->
+<div class="desktop-brand" style="display:none">
+  <div style="font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:48px;color:#e81416;border:4px solid #e81416;padding:8px 14px;border-radius:6px;line-height:1">
+    <div>CRM</div><div>HUB</div>
+  </div>
+  <div style="font-family:'Barlow',sans-serif;font-size:13px;color:#a0b0d0;text-align:center;line-height:1.6">
+    Customer Relationship<br>Management Hub<br><strong>By Plotting Engage.</strong>
+  </div>
+</div>
 
 <!-- ═══ TOAST CONTAINER ═══ -->
 <div class="toast-container" id="toastContainer"></div>
@@ -553,11 +647,11 @@ body{font-family:var(--font-body);color:var(--text-primary);-webkit-font-smoothi
   <div class="form-card">
     <div class="input-group-crm">
       <i class="bi bi-envelope-fill"></i>
-      <input type="email" id="loginEmail" placeholder="Email ID" autocomplete="email" required/>
+      <input type="email" id="loginEmail" placeholder="Email ID" autocomplete="email" required onkeydown="if(event.key==='Enter')doLogin()"/>
     </div>
     <div class="input-group-crm">
       <i class="bi bi-lock-fill"></i>
-      <input type="password" id="loginPass" placeholder="Palavra-passe" autocomplete="current-password" required/>
+      <input type="password" id="loginPass" placeholder="Palavra-passe" autocomplete="current-password" required onkeydown="if(event.key==='Enter')doLogin()"/>
       <i class="bi bi-eye toggle-pass" onclick="togglePass('loginPass',this)" style="cursor:pointer;color:var(--text-label)"></i>
     </div>
     <div class="check-row">
@@ -882,9 +976,9 @@ body{font-family:var(--font-body);color:var(--text-primary);-webkit-font-smoothi
     </div>
   </div>
   <div class="section-title">Definições</div>
-  <div class="settings-section">
+  <div class="settings-section" id="settingsProjSection">
     <h5>PROJECTOS</h5>
-    <div class="setting-row" onclick="showPage('page-create-project')">
+    <div class="setting-row admin-only" id="settingsCreateProj" onclick="showPage('page-create-project')">
       <div class="sr-left"><i class="bi bi-folder-plus"></i> Criar Novo Projecto</div>
       <i class="bi bi-chevron-right" style="color:var(--text-label)"></i>
     </div>
@@ -895,12 +989,16 @@ body{font-family:var(--font-body);color:var(--text-primary);-webkit-font-smoothi
   </div>
   <div class="settings-section">
     <h5>UTILIZADORES</h5>
-    <div class="setting-row" onclick="openCreateUserModal()">
+    <div class="setting-row admin-only" id="settingsCreateUser" onclick="openCreateUserModal()">
       <div class="sr-left"><i class="bi bi-person-plus-fill"></i> Criar Novo Utilizador</div>
       <i class="bi bi-chevron-right" style="color:var(--text-label)"></i>
     </div>
-    <div class="setting-row" onclick="showPage('page-active-users')">
+    <div class="setting-row admin-only" id="settingsManageUsers" onclick="showPage('page-active-users')">
       <div class="sr-left"><i class="bi bi-people-fill"></i> Gerir Utilizadores</div>
+      <i class="bi bi-chevron-right" style="color:var(--text-label)"></i>
+    </div>
+    <div class="setting-row collab-only" id="settingsNotifyAdmin" style="display:none" onclick="openNotifyAdminModal()">
+      <div class="sr-left"><i class="bi bi-bell-fill" style="color:var(--accent-green)"></i> Notificar Administrador</div>
       <i class="bi bi-chevron-right" style="color:var(--text-label)"></i>
     </div>
   </div>
@@ -1299,9 +1397,29 @@ function enterApp() {
 
 function checkRole() {
   const role = currentProfile?.role;
-  if (role === 'admin' || role === 'master') {
-    document.getElementById('adminAccountSection').style.display = 'block';
-  }
+  const isAdmin = role === 'admin' || role === 'master';
+  const isCollab = role === 'collaborator';
+
+  // Account section
+  if (isAdmin) document.getElementById('adminAccountSection').style.display = 'block';
+
+  // Settings page: hide admin-only rows for collaborators
+  document.querySelectorAll('.admin-only').forEach(el => {
+    el.style.display = isAdmin ? 'flex' : 'none';
+  });
+  document.querySelectorAll('.collab-only').forEach(el => {
+    el.style.display = isCollab ? 'flex' : 'none';
+  });
+
+  // Settings section header for projects: hide label if no items
+  const createProjRow = document.getElementById('settingsCreateProj');
+  if (createProjRow) createProjRow.style.display = isAdmin ? 'flex' : 'none';
+  const createUserRow = document.getElementById('settingsCreateUser');
+  if (createUserRow) createUserRow.style.display = isAdmin ? 'flex' : 'none';
+  const manageUsersRow = document.getElementById('settingsManageUsers');
+  if (manageUsersRow) manageUsersRow.style.display = isAdmin ? 'flex' : 'none';
+  const notifyRow = document.getElementById('settingsNotifyAdmin');
+  if (notifyRow) notifyRow.style.display = isCollab ? 'flex' : 'none';
 }
 
 /* ═══ PAGE NAVIGATION ═══ */
@@ -1399,19 +1517,44 @@ function confirmLogout() {
 /* ═══ PROJECTS ═══ */
 async function loadProjects() {
   showLoading(true);
-  let query = _db.from('projects').select('*').order('created_at', { ascending: false });
-  if (currentProfile?.role !== 'master') {
+  const role    = currentProfile?.role;
+  const compId  = currentProfile?.company_id;
+
+  let projects = [];
+
+  if (role === 'master') {
+    // Master sees all projects of own company
+    const { data } = await _db.from('projects')
+      .select('*').eq('company_id', compId).order('created_at', { ascending: false });
+    projects = data || [];
+
+  } else if (role === 'admin') {
+    // Admin sees projects of own company + projects they're member of
     const { data: memberProjs } = await _db
       .from('project_members').select('project_id').eq('user_id', currentUser.id);
     const ids = (memberProjs || []).map(m => m.project_id);
-    const compId = currentProfile?.company_id;
-    query = _db.from('projects').select('*')
-      .or(`company_id.eq.${compId},id.in.(${ids.join(',') || 'null'})`)
-      .order('created_at', { ascending: false });
+    const filter = ids.length
+      ? `company_id.eq.${compId},id.in.(${ids.join(',')})`
+      : `company_id.eq.${compId}`;
+    const { data } = await _db.from('projects').select('*')
+      .or(filter).order('created_at', { ascending: false });
+    projects = data || [];
+
+  } else {
+    // Collaborator: only sees projects they've been explicitly added to
+    // (which must belong to the same company as their admin)
+    const { data: memberProjs } = await _db
+      .from('project_members').select('project_id').eq('user_id', currentUser.id);
+    const ids = (memberProjs || []).map(m => m.project_id);
+    if (ids.length) {
+      const { data } = await _db.from('projects').select('*')
+        .in('id', ids).eq('company_id', compId).order('created_at', { ascending: false });
+      projects = data || [];
+    }
   }
-  const { data: projects } = await query;
+
   showLoading(false);
-  renderProjectGrid(projects || []);
+  renderProjectGrid(projects);
 }
 
 function renderProjectGrid(projects) {
@@ -1705,29 +1848,37 @@ async function clickStand(fpId, r, c) {
 }
 
 async function openAvailableStand(stand, fp) {
-  const canEdit = ['master','admin'].includes(currentProfile?.role);
+  const role = currentProfile?.role;
+  const canEdit = ['master','admin'].includes(role);
+  const isCollab = role === 'collaborator';
+
   document.getElementById('standFloorName').textContent = fp.name;
   document.getElementById('standTitle').textContent = `STAND ${stand.number}`;
   currentFP = fp;
 
   const content = document.getElementById('standContent');
-  if (!canEdit) {
-    content.innerHTML = `<div style="padding:16px;color:var(--text-muted)">Esta stand está disponível. Contacte o administrador para efectuar o aluguel.</div>`;
-  } else {
+
+  if (canEdit) {
+    // Admin/Master: full rental form
     content.innerHTML = `
       <div style="padding:0 16px">
-        <p style="color:var(--text-muted);font-size:14px;margin-bottom:16px">Registar novo aluguel para esta stand.</p>
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px">
+          <div style="width:10px;height:10px;border-radius:50%;background:var(--accent-green);box-shadow:0 0 8px var(--accent-green)"></div>
+          <span style="font-size:13px;color:var(--accent-green);font-weight:600">DISPONÍVEL</span>
+        </div>
         <div class="input-group-crm dark"><i class="bi bi-building"></i><input type="text" id="rsCompany" placeholder="Nome Empresa" required/></div>
         <div class="input-group-crm dark"><i class="bi bi-tag-fill"></i><input type="text" id="rsNif" placeholder="NIF" required/></div>
-        <div class="input-group-crm dark"><i class="bi bi-envelope-fill"></i><input type="email" id="rsEmail" placeholder="Email Master" required/></div>
+        <div class="input-group-crm dark"><i class="bi bi-envelope-fill"></i><input type="email" id="rsEmail" placeholder="Email" required/></div>
         <div class="input-group-crm dark"><i class="bi bi-telephone-fill"></i><input type="tel" id="rsPhone" placeholder="Número de telefone" required/></div>
         <div class="input-group-crm dark"><i class="bi bi-geo-alt-fill"></i><input type="text" id="rsCountry" placeholder="País" value="Angola"/></div>
         <div class="input-group-crm dark"><i class="bi bi-sticky"></i><input type="text" id="rsNotes" placeholder="Notas (opcional)"/></div>
-        <div style="margin-bottom:12px">
-          <div style="font-size:13px;color:var(--text-muted);margin-bottom:8px">Documentos (Comprovativo de Pagamento, etc.)</div>
+        <div style="margin-bottom:14px">
+          <div style="font-size:13px;color:var(--text-muted);margin-bottom:8px;font-weight:600">
+            <i class="bi bi-paperclip"></i> Documentos
+          </div>
           <div class="drop-zone" id="dropZone" onclick="document.getElementById('docsInput').click()">
             <i class="bi bi-cloud-upload-fill"></i>
-            <p>Arraste ficheiros ou clique para selecionar<br><small>JPG, PNG ou PDF (máx. 20MB cada)</small></p>
+            <p>Clique ou arraste ficheiros<br><small>JPG, PNG ou PDF (máx. 20MB)</small></p>
           </div>
           <input type="file" id="docsInput" multiple accept="image/*,.pdf" style="display:none" onchange="previewDocs(this)"/>
           <div class="doc-grid" id="docPreviewGrid"></div>
@@ -1737,6 +1888,23 @@ async function openAvailableStand(stand, fp) {
         </button>
       </div>`;
     setupDropZone();
+
+  } else if (isCollab) {
+    // Collaborator: view status + notify admin
+    content.innerHTML = `
+      <div style="padding:16px">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:20px">
+          <div style="width:12px;height:12px;border-radius:50%;background:var(--accent-green);box-shadow:0 0 8px var(--accent-green)"></div>
+          <span style="color:var(--accent-green);font-weight:600">Stand disponível</span>
+        </div>
+        <p style="color:var(--text-muted);font-size:14px;margin-bottom:20px">
+          Apenas administradores podem registar aluguéis.<br>
+          Pode notificar o administrador sobre um possível cliente.
+        </p>
+        <button class="btn-crm btn-green" onclick="openNotifyAdminWithStand('${stand.number}','${fp.name}')">
+          <i class="bi bi-bell-fill"></i> NOTIFICAR ADMINISTRADOR
+        </button>
+      </div>`;
   }
   showPage('page-stand');
 }
@@ -2464,6 +2632,62 @@ async function changePassword() {
   toast('Senha alterada com sucesso!', 'success');
 }
 
+/* ═══ NOTIFY ADMIN (Collaborator) ═══ */
+function openNotifyAdminModal() {
+  document.getElementById('notifyCompany').value = '';
+  document.getElementById('notifyStand').value = '';
+  document.getElementById('notifyMsg').value = '';
+  openPopup('notifyAdminModal');
+}
+
+function openNotifyAdminWithStand(standNum, fpName) {
+  document.getElementById('notifyCompany').value = '';
+  document.getElementById('notifyStand').value = `${fpName} – Stand ${standNum}`;
+  document.getElementById('notifyMsg').value = '';
+  openPopup('notifyAdminModal');
+}
+
+async function sendNotifyAdmin() {
+  const company = document.getElementById('notifyCompany').value.trim();
+  const stand   = document.getElementById('notifyStand').value.trim();
+  const msg     = document.getElementById('notifyMsg').value.trim();
+  if (!msg) { toast('Escreva uma mensagem', 'error'); return; }
+
+  showLoading(true);
+  // Find admins of same company
+  const { data: admins } = await _db.from('profiles')
+    .select('id').in('role', ['master','admin'])
+    .eq('company_id', currentProfile?.company_id);
+
+  const body = `${stand ? `Stand: ${stand}\n` : ''}${company ? `Empresa: ${company}\n` : ''}Mensagem: ${msg}`;
+
+  if (admins?.length) {
+    // Send notification to each admin
+    await _db.from('notifications').insert(
+      admins.map(a => ({
+        user_id: a.id,
+        title: `Notificação de ${currentProfile?.full_name || 'Colaborador'}`,
+        message: body,
+        type: 'info'
+      }))
+    );
+    // Also send a message
+    await _db.from('messages').insert(
+      admins.map(a => ({
+        from_user_id: currentUser.id,
+        to_user_id: a.id,
+        subject: stand ? `Interesse: ${stand}` : 'Notificação de aluguel',
+        body
+      }))
+    );
+  }
+
+  showLoading(false);
+  closePopup();
+  toast('Administrador notificado!', 'success');
+  await logActivity('Notificou administrador', 'notification', null, currentProject?.id, { stand, company });
+}
+
 /* ═══ ACTIVITY LOG ═══ */
 async function logActivity(action, entityType, entityId, projectId, details = {}) {
   try {
@@ -2585,5 +2809,36 @@ window.showPage = function(id, pushHistory = true) {
   });
 };
 </script>
+
+<!-- ══════════════════════════════════════════════════════════════
+  MODAL: NOTIFY ADMIN (Collaborator)
+══════════════════════════════════════════════════════════════ -->
+<div class="stand-popup" id="notifyAdminModal" style="display:none">
+  <h5 style="font-family:var(--font-display);font-size:20px;font-weight:800;margin-bottom:6px">
+    <i class="bi bi-bell-fill" style="color:var(--accent-green)"></i> Notificar Administrador
+  </h5>
+  <p style="font-size:13px;color:var(--text-muted);margin-bottom:16px">
+    Informe o administrador sobre um possível aluguel ou outro assunto.
+  </p>
+  <div class="input-group-crm dark">
+    <i class="bi bi-building"></i>
+    <input type="text" id="notifyCompany" placeholder="Empresa interessada (opcional)"/>
+  </div>
+  <div class="input-group-crm dark">
+    <i class="bi bi-layers-fill"></i>
+    <input type="text" id="notifyStand" placeholder="Stand de interesse (ex: Stand 05)"/>
+  </div>
+  <div style="background:var(--bg-dark-input);border:1px solid var(--border);border-radius:10px;padding:12px;margin-bottom:14px">
+    <textarea id="notifyMsg" placeholder="Mensagem para o administrador..." 
+      style="background:transparent;border:none;outline:none;color:#fff;width:100%;min-height:90px;font-family:var(--font-body);font-size:14px;resize:none"></textarea>
+  </div>
+  <div style="display:flex;gap:8px">
+    <button class="btn-crm btn-secondary-crm" style="flex:1;margin:0" onclick="closePopup()">Cancelar</button>
+    <button class="btn-crm btn-green" style="flex:1" onclick="sendNotifyAdmin()">
+      <i class="bi bi-send-fill"></i> Enviar
+    </button>
+  </div>
+</div>
+
 </body>
 </html>
