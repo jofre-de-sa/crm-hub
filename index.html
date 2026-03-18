@@ -1211,7 +1211,7 @@ body{font-family:var(--font-body);color:var(--text-primary);-webkit-font-smoothi
   JS – Supabase + App Logic
 ══════════════════════════════════════════════════════════════ -->
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.3/dist/umd/supabase.min.js"></script>
 <script>
 // Fix: alias the global before it gets overwritten
 
@@ -1225,7 +1225,7 @@ body{font-family:var(--font-body);color:var(--text-primary);-webkit-font-smoothi
 const SUPABASE_URL  = 'https://SEU-PROJECTO.supabase.co';
 const SUPABASE_KEY  = 'SUA-CHAVE-ANONIMA-PUBLICA';
 
-const _db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+const _db = (window.supabase?.createClient || window.supabase?.default?.createClient || supabaseJs?.createClient)(SUPABASE_URL, SUPABASE_KEY);
 
 /* ───── App State ───── */
 let currentUser   = null;
@@ -1267,7 +1267,7 @@ window.addEventListener('DOMContentLoaded', async () => {
 });
 
 async function loadProfile() {
-  const { data, error } = await supabase
+  const { data, error } = await _db
     .from('profiles')
     .select('*, companies(*)')
     .eq('id', currentUser.id)
@@ -1361,7 +1361,7 @@ async function doRegister() {
 
   showLoading(true);
   // Create company first
-  const { data: compData, error: compErr } = await supabase
+  const { data: compData, error: compErr } = await _db
     .from('companies').insert([{ name: company, nif, email, phone, country }]).select().single();
   if (compErr) { showLoading(false); toast('Erro ao criar empresa: ' + compErr.message, 'error'); return; }
 
@@ -1401,7 +1401,7 @@ async function loadProjects() {
   showLoading(true);
   let query = _db.from('projects').select('*').order('created_at', { ascending: false });
   if (currentProfile?.role !== 'master') {
-    const { data: memberProjs } = await supabase
+    const { data: memberProjs } = await _db
       .from('project_members').select('project_id').eq('user_id', currentUser.id);
     const ids = (memberProjs || []).map(m => m.project_id);
     const compId = currentProfile?.company_id;
@@ -1693,7 +1693,7 @@ async function clickStand(fpId, r, c) {
   if (!stand) return;
 
   // Load DB stand record
-  const { data: dbStand } = await supabase
+  const { data: dbStand } = await _db
     .from('stands').select('*').eq('floor_plan_id', fpId).eq('number', stand.number).single();
   if (!dbStand) return;
 
@@ -1742,7 +1742,7 @@ async function openAvailableStand(stand, fp) {
 }
 
 async function openRentedStand(stand, fp) {
-  const { data: rental } = await supabase
+  const { data: rental } = await _db
     .from('rentals').select('*, rental_documents(*)').eq('stand_id', stand.id).eq('status', 'active').single();
   currentRental = rental;
 
@@ -1935,7 +1935,7 @@ async function addFloorPlan() {
 /* ═══ MY LIST ═══ */
 async function loadMyList() {
   showLoading(true);
-  const { data: rentals } = await supabase
+  const { data: rentals } = await _db
     .from('rentals')
     .select('*, stands(number, floor_plan_id, floor_plans(name, project_id, projects(name)))')
     .order('created_at', { ascending: false });
@@ -1981,7 +1981,7 @@ function renderMyList(rentals) {
 
 async function openRentalDetail(rentalId) {
   showLoading(true);
-  const { data: rental } = await supabase
+  const { data: rental } = await _db
     .from('rentals')
     .select('*, stands(number, floor_plans(name, projects(name))), rental_documents(*)')
     .eq('id', rentalId).single();
@@ -2095,7 +2095,7 @@ async function requestChange(rentalId) {
 
 /* ═══ MESSAGES ═══ */
 async function loadMessages() {
-  const { data: msgs } = await supabase
+  const { data: msgs } = await _db
     .from('messages')
     .select('*, profiles!from_user_id(full_name, avatar_url)')
     .or(`to_user_id.eq.${currentUser.id},to_user_id.is.null`)
@@ -2248,7 +2248,7 @@ async function toggleUserActive(userId, current) {
 
 async function viewUserActivity(userId, name) {
   showLoading(true);
-  const { data: logs } = await supabase
+  const { data: logs } = await _db
     .from('activity_log').select('*').eq('user_id', userId).order('created_at', { ascending: false }).limit(50);
   showLoading(false);
   document.getElementById('userActivityTitle').textContent = name;
