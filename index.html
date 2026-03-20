@@ -1446,55 +1446,25 @@ function confirmLogout() {
 /* ═══ PROJECTS ═══ */
 async function loadProjects() {
   showLoading(true);
-  const role    = currentProfile?.role;
-  const compId  = currentProfile?.company_id;
+  const compId = currentProfile?.company_id;
+  const canCreate = ['master','admin'].includes(currentProfile?.role);
 
   let projects = [];
-
-  if (role === 'master') {
-    // Master sees all projects of own company
+  if (compId) {
+    // ALL roles see all projects of their company
     const { data } = await _db.from('projects')
-      .select('*').eq('company_id', compId).order('created_at', { ascending: false });
+      .select('*').eq('company_id', compId).eq('active', true)
+      .order('created_at', { ascending: false });
     projects = data || [];
-
-  } else if (role === 'admin') {
-    // Admin sees projects of own company + projects they're member of
-    const { data: memberProjs } = await _db
-      .from('project_members').select('project_id').eq('user_id', currentUser.id);
-    const ids = (memberProjs || []).map(m => m.project_id);
-    const filter = ids.length
-      ? `company_id.eq.${compId},id.in.(${ids.join(',')})`
-      : `company_id.eq.${compId}`;
-    const { data } = await _db.from('projects').select('*')
-      .or(filter).order('created_at', { ascending: false });
-    projects = data || [];
-
-  } else {
-    // Collaborator: only sees projects they've been explicitly added to
-    const { data: memberProjs } = await _db
-      .from('project_members').select('project_id').eq('user_id', currentUser.id);
-    const ids = (memberProjs || []).map(m => m.project_id);
-    if (ids.length) {
-      const { data } = await _db.from('projects').select('*')
-        .in('id', ids).order('created_at', { ascending: false });
-      projects = data || [];
-    } else {
-      // Fallback: show all projects of same company if no explicit membership
-      if (compId) {
-        const { data } = await _db.from('projects').select('*')
-          .eq('company_id', compId).order('created_at', { ascending: false });
-        projects = data || [];
-      }
-    }
   }
 
   showLoading(false);
-  renderProjectGrid(projects);
+  renderProjectGrid(projects, canCreate);
 }
 
-function renderProjectGrid(projects) {
+function renderProjectGrid(projects, canCreate) {
+  if (canCreate === undefined) canCreate = ['master','admin'].includes(currentProfile?.role);
   const grid = document.getElementById('projectsGrid');
-  const canCreate = ['master','admin'].includes(currentProfile?.role);
   let html = '';
   projects.forEach(p => {
     html += `<div class="proj-card" onclick="openProject('${p.id}')">
@@ -1573,30 +1543,43 @@ async function openAddFloorPlanForProject() {
 /* ═══ FLOOR PLAN BUILDER ═══ */
 function renderFloorPlanBuilder(fp, canEdit) {
   const wrap = document.getElementById('floorPlanBuilderWrap');
-  const gridData = fp.grid_data || [];
+  const gridData   = fp.grid_data   || [];
   const standsData = fp.stands_data || [];
   const cols = fp.width_m;
   const rows = fp.length_m;
+  const isConfirmed = fp.confirmed;
 
-  // Build a map for quick lookup
-  const cellMap = {};
+  // Maps for quick lookup
+  const cellMap  = {};
   gridData.forEach(c => { cellMap[`${c.row}-${c.col}`] = c.type; });
-  const standMap = {};
+  const standMap = {};   // cell key → stand number
+  const standStatusMap = {};  // stand number → status (loaded async below)
   standsData.forEach(s => s.cells.forEach(c => { standMap[`${c.row}-${c.col}`] = s.number; }));
 
+  // Build grid HTML
   let tableHtml = '<table class="grid-table">';
   for (let r = 0; r < rows; r++) {
     tableHtml += '<tr>';
     for (let c = 0; c < cols; c++) {
-      const key = `${r}-${c}`;
+      const key  = `${r}-${c}`;
       const type = cellMap[key];
       const sNum = standMap[key];
+
       let cls = 'grid-cell';
       if (type === 'corridor') cls += ' corridor';
       else if (type === 'stand') cls += ' stand-cell';
-      const onclick = canEdit ? `onmousedown="startDraw(${r},${c})" onmouseover="continueDraw(${r},${c})" onmouseup="endDraw()"` : '';
-      const clickFn = !canEdit ? `onclick="clickStand('${fp.id}',${r},${c})"` : '';
-      tableHtml += `<td class="${cls}" data-r="${r}" data-c="${c}" ${onclick} ${clickFn}>
+
+      // Drawing: only for admin/master on unconfirmed plans
+      const drawAttrs = (canEdit && !isConfirmed)
+        ? `onmousedown="startDraw(${r},${c})" onmouseover="continueDraw(${r},${c})" onmouseup="endDraw()"`
+        : '';
+
+      // Clicking: ALL users can click stand cells (confirmed or not)
+      const clickAttr = sNum
+        ? `onclick="clickStand('${fp.id}',${r},${c})"`
+        : '';
+
+      tableHtml += `<td class="${cls}" data-r="${r}" data-c="${c}" data-stand="${sNum||''}" ${drawAttrs} ${clickAttr}>
         ${sNum ? `<span class="stand-number-label ${type==='corridor'?'dark':''}">${sNum}</span>` : ''}
       </td>`;
     }
@@ -1604,23 +1587,25 @@ function renderFloorPlanBuilder(fp, canEdit) {
   }
   tableHtml += '</table>';
 
-  // Stats
-  const totalStands = standsData.length;
-  const standIds = standsData.map(s => s.id).filter(Boolean);
-
   let html = `<div class="floor-plan-container"><div class="grid-wrap">${tableHtml}</div></div>`;
 
-  if (canEdit) {
-    const mode = editMode;
+  // Controls (admin only, unconfirmed only)
+  if (canEdit && !isConfirmed) {
     html += `<div class="floor-controls">
-      <button class="floor-btn ${mode==='corridor'?'active-mode':''}" onclick="setEditMode('corridor',this,'${fp.id}')">CORREDOR</button>
-      <button class="floor-btn ${mode==='stand'?'green':''}${mode==='stand'?' active-mode':''}" onclick="setEditMode('stand',this,'${fp.id}')">STAND</button>
-      ${fp.confirmed ? '' : `<button class="floor-btn purple" onclick="numStands('${fp.id}')">NUMERAR STAND</button>`}
-      ${fp.confirmed ? '<button class="floor-btn green" onclick="saveFloorPlan(\''+fp.id+'\')">CONFIRMAR</button>' : '<button class="floor-btn green" onclick="saveFloorPlan(\''+fp.id+'\')">GUARDAR</button>'}
+      <button class="floor-btn" id="btnCorredor" onclick="setEditMode('corridor',this,'${fp.id}')">CORREDOR</button>
+      <button class="floor-btn" id="btnStand" onclick="setEditMode('stand',this,'${fp.id}')">STAND</button>
+      <button class="floor-btn purple" onclick="numStands('${fp.id}')">NUMERAR STAND</button>
+      <button class="floor-btn green" onclick="saveFloorPlan('${fp.id}')">GUARDAR E CONFIRMAR</button>
+    </div>`;
+  } else if (canEdit && isConfirmed) {
+    html += `<div class="floor-controls">
+      <button class="floor-btn" style="background:var(--bg-card2);font-size:12px;opacity:.7" onclick="unconfirmFloorPlan('${fp.id}')">
+        <i class="bi bi-pencil-fill"></i> EDITAR PLANTA
+      </button>
     </div>`;
   }
 
-  // Stands counter (load async)
+  // Stands counter
   html += `<div class="stands-counter" id="standCounter-${fp.id}">
     <div class="counter-box green"><div class="count" id="freeCount-${fp.id}">—</div><div class="label">LIVRES</div></div>
     <div class="counter-box red"><div class="count" id="rentedCount-${fp.id}">—</div><div class="label">VENDIDOS</div></div>
@@ -1628,11 +1613,10 @@ function renderFloorPlanBuilder(fp, canEdit) {
 
   wrap.innerHTML = html;
 
-  // Load stand status
-  loadStandCounts(fp);
+  // Colour stands by DB status (green=available, red=rented)
+  loadStandCountsAndColour(fp);
 
-  // Mouse tracking for drawing
-  if (canEdit) {
+  if (canEdit && !isConfirmed) {
     wrap.addEventListener('mouseup', endDraw);
     wrap.addEventListener('touchend', endDraw);
   }
@@ -1751,29 +1735,59 @@ async function saveFloorPlan(fpId) {
   logActivity('Guardou planta', 'floor_plan', fpId, currentProject?.id);
 }
 
-async function loadStandCounts(fp) {
-  const { data: stands } = await _db.from('stands').select('status').eq('floor_plan_id', fp.id);
+async function loadStandCountsAndColour(fp) {
+  const { data: stands } = await _db.from('stands').select('number,status').eq('floor_plan_id', fp.id);
   if (!stands) return;
-  const free = stands.filter(s => s.status === 'available').length;
+
+  // Colour cells by status
+  stands.forEach(s => {
+    // Find all cells with this stand number
+    document.querySelectorAll(`[data-stand="${s.number}"]`).forEach(cell => {
+      cell.classList.remove('stand-cell','stand-rented');
+      if (s.status === 'rented') cell.classList.add('stand-rented');
+      else cell.classList.add('stand-cell');
+    });
+  });
+
+  // Update counters
+  const free   = stands.filter(s => s.status === 'available').length;
   const rented = stands.filter(s => s.status === 'rented').length;
-  const freeEl = document.getElementById(`freeCount-${fp.id}`);
+  const freeEl   = document.getElementById(`freeCount-${fp.id}`);
   const rentedEl = document.getElementById(`rentedCount-${fp.id}`);
-  if (freeEl) freeEl.textContent = String(free).padStart(2, '0');
-  if (rentedEl) rentedEl.textContent = String(rented).padStart(2, '0');
+  if (freeEl)   freeEl.textContent   = String(free).padStart(2,'0');
+  if (rentedEl) rentedEl.textContent = String(rented).padStart(2,'0');
+}
+
+// Keep old name as alias for any remaining calls
+async function loadStandCounts(fp) { return loadStandCountsAndColour(fp); }
+
+async function unconfirmFloorPlan(fpId) {
+  showConfirm('Editar Planta', 'Isto irá desbloquear a edição da planta. Stands já alugadas serão mantidas.', async () => {
+    await _db.from('floor_plans').update({ confirmed: false }).eq('id', fpId);
+    toast('Planta desbloqueada para edição', 'info');
+    openProject(currentProject.id);
+  });
 }
 
 async function clickStand(fpId, r, c) {
-  // Find which stand this cell belongs to
+  showLoading(true);
   const { data: fp } = await _db.from('floor_plans').select('*').eq('id', fpId).single();
-  if (!fp) return;
+  showLoading(false);
+  if (!fp) { toast('Erro ao carregar planta', 'error'); return; }
+
   const standsData = fp.stands_data || [];
   const stand = standsData.find(s => s.cells.some(cell => cell.row === r && cell.col === c));
-  if (!stand) return;
+  if (!stand) { toast('Stand não encontrada', 'error'); return; }
 
-  // Load DB stand record
+  showLoading(true);
   const { data: dbStand } = await _db
     .from('stands').select('*').eq('floor_plan_id', fpId).eq('number', stand.number).single();
-  if (!dbStand) return;
+  showLoading(false);
+
+  if (!dbStand) {
+    toast('Stand não registada na base de dados. Numere as stands primeiro.', 'error');
+    return;
+  }
 
   if (dbStand.status === 'rented') {
     await openRentedStand(dbStand, fp);
@@ -2449,21 +2463,27 @@ async function loadAccountPage() {
       <div class="info-row"><i class="bi bi-geo-alt-fill"></i>${c.country}</div>`;
   }
 
-  // Projects
-  let projQuery = _db.from('projects').select('name,id').order('created_at', { ascending: false });
-  if (p.role !== 'master') {
-    const { data: memb } = await _db.from('project_members').select('project_id').eq('user_id', currentUser.id);
-    const ids = (memb || []).map(m => m.project_id);
-    if (ids.length) projQuery = projQuery.in('id', ids);
-  } else {
-    projQuery = projQuery.eq('company_id', p.company_id);
+  // Projects — always show ALL projects of the user's company
+  const compId = p.company_id;
+  let myProjs = [];
+  if (compId) {
+    const { data } = await _db.from('projects')
+      .select('name,id,image_url')
+      .eq('company_id', compId)
+      .eq('active', true)
+      .order('created_at', { ascending: false });
+    myProjs = data || [];
   }
-  const { data: myProjs } = await projQuery.limit(5);
-  document.getElementById('accountProjects').innerHTML = (myProjs || []).map(pr => `
-    <div class="setting-row" onclick="openProject('${pr.id}')">
-      <div class="sr-left"><i class="bi bi-folder-fill"></i>${pr.name}</div>
-      <i class="bi bi-chevron-right" style="color:var(--text-label)"></i>
-    </div>`).join('') || `<p style="color:var(--text-muted);font-size:13px">Sem projectos.</p>`;
+  document.getElementById('accountProjects').innerHTML = myProjs.length
+    ? myProjs.map(pr => `
+        <div class="setting-row" onclick="openProject('${pr.id}')">
+          <div class="sr-left">
+            ${pr.image_url ? `<img src="${pr.image_url}" style="width:22px;height:22px;border-radius:4px;object-fit:cover"/>` : `<i class="bi bi-folder-fill"></i>`}
+            ${pr.name}
+          </div>
+          <i class="bi bi-chevron-right" style="color:var(--text-label)"></i>
+        </div>`).join('')
+    : `<p style="color:var(--text-muted);font-size:13px;padding:8px 0">Sem projectos.</p>`;
 
   if (['master','admin'].includes(p.role)) {
     document.getElementById('adminAccountSection').style.display = 'block';
