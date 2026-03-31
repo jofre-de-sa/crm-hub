@@ -256,6 +256,8 @@ body{font-family:var(--font-body);color:var(--text-primary);-webkit-font-smoothi
 .grid-cell.corridor{background:#fff !important}
 .grid-cell.stand-cell{background:var(--accent-green) !important}
 .grid-cell.stand-rented{background:var(--accent-red) !important}
+.grid-cell.stand-reserved{background:#f07800 !important}
+.counter-box.orange{background:#f07800}
 .grid-cell.stand-selecting{background:rgba(104,50,227,.7) !important}
 .grid-cell:hover{filter:brightness(1.3)}
 .stand-number-label{
@@ -845,6 +847,7 @@ body{font-family:var(--font-body);color:var(--text-primary);-webkit-font-smoothi
     <select id="listFilter" style="background:var(--bg-card2);border:1px solid var(--border);border-radius:10px;padding:10px;color:#fff;font-size:13px" onchange="filterList()">
       <option value="all">Todos</option>
       <option value="active">Activos</option>
+      <option value="reserved">Reservados</option>
       <option value="cancelled">Cancelados</option>
     </select>
   </div>
@@ -1736,29 +1739,58 @@ async function saveFloorPlan(fpId) {
 }
 
 async function loadStandCountsAndColour(fp) {
-  const { data: stands } = await _db.from('stands').select('number,status').eq('floor_plan_id', fp.id);
+  const { data: stands } = await _db.from('stands').select('number,status,reserved_until').eq('floor_plan_id', fp.id);
   if (!stands) return;
 
-  // Colour cells by status
-  stands.forEach(s => {
-    // Find all cells with this stand number
-    document.querySelectorAll(`[data-stand="${s.number}"]`).forEach(cell => {
-      cell.classList.remove('stand-cell','stand-rented');
-      if (s.status === 'rented') cell.classList.add('stand-rented');
-      else cell.classList.add('stand-cell');
-    });
-  });
+  const now = new Date();
 
-  // Update counters
-  const free   = stands.filter(s => s.status === 'available').length;
-  const rented = stands.filter(s => s.status === 'rented').length;
+  // Process each stand — auto-expire reservations
+  for (const s of stands) {
+    // Auto-expire: if reserved and 72h passed, set back to available
+    if (s.status === 'reserved' && s.reserved_until) {
+      const expiry = new Date(s.reserved_until);
+      if (now > expiry) {
+        await _db.from('stands').update({ status: 'available', reserved_until: null }).eq('floor_plan_id', fp.id).eq('number', s.number);
+        await _db.from('rentals').update({ status: 'cancelled' }).eq('stand_id', s.id).eq('status', 'reserved');
+        s.status = 'available';
+      }
+    }
+
+    // Colour each cell of this stand
+    document.querySelectorAll(`[data-stand="${s.number}"]`).forEach(cell => {
+      cell.classList.remove('stand-cell','stand-rented','stand-reserved');
+      if      (s.status === 'rented')    cell.classList.add('stand-rented');
+      else if (s.status === 'reserved')  cell.classList.add('stand-reserved');
+      else                               cell.classList.add('stand-cell');
+    });
+  }
+
+  // Counters
+  const free     = stands.filter(s => s.status === 'available').length;
+  const rented   = stands.filter(s => s.status === 'rented').length;
+  const reserved = stands.filter(s => s.status === 'reserved').length;
+
   const freeEl   = document.getElementById(`freeCount-${fp.id}`);
   const rentedEl = document.getElementById(`rentedCount-${fp.id}`);
   if (freeEl)   freeEl.textContent   = String(free).padStart(2,'0');
   if (rentedEl) rentedEl.textContent = String(rented).padStart(2,'0');
+
+  // Add reserved counter if any
+  const counterWrap = document.getElementById(`standCounter-${fp.id}`);
+  if (counterWrap) {
+    const existing = document.getElementById(`reservedCount-${fp.id}`);
+    if (!existing && reserved > 0) {
+      counterWrap.insertAdjacentHTML('beforeend',
+        `<div class="counter-box orange">
+          <div class="count" id="reservedCount-${fp.id}">${String(reserved).padStart(2,'0')}</div>
+          <div class="label">RESERVADAS</div>
+        </div>`);
+    } else if (existing) {
+      existing.textContent = String(reserved).padStart(2,'0');
+    }
+  }
 }
 
-// Keep old name as alias for any remaining calls
 async function loadStandCounts(fp) { return loadStandCountsAndColour(fp); }
 
 async function unconfirmFloorPlan(fpId) {
@@ -1785,19 +1817,26 @@ async function clickStand(fpId, r, c) {
   showLoading(false);
 
   if (!dbStand) {
-    toast('Stand não registada na base de dados. Numere as stands primeiro.', 'error');
-    return;
+    toast('Stand não registada. Numere as stands primeiro.', 'error'); return;
   }
 
-  if (dbStand.status === 'rented') {
-    await openRentedStand(dbStand, fp);
-  } else {
-    await openAvailableStand(dbStand, fp);
+  // Check reservation expiry
+  if (dbStand.status === 'reserved' && dbStand.reserved_until) {
+    const expired = new Date() > new Date(dbStand.reserved_until);
+    if (expired) {
+      await _db.from('stands').update({ status: 'available', reserved_until: null }).eq('id', dbStand.id);
+      await _db.from('rentals').update({ status: 'cancelled' }).eq('stand_id', dbStand.id).eq('status', 'reserved');
+      dbStand.status = 'available';
+    }
   }
+
+  if      (dbStand.status === 'rented')   await openRentedStand(dbStand, fp);
+  else if (dbStand.status === 'reserved') await openReservedStand(dbStand, fp);
+  else                                    await openAvailableStand(dbStand, fp);
 }
 
 async function openAvailableStand(stand, fp) {
-  const role = currentProfile?.role;
+  const role    = currentProfile?.role;
   const canEdit = ['master','admin'].includes(role);
   const isCollab = role === 'collaborator';
 
@@ -1808,19 +1847,20 @@ async function openAvailableStand(stand, fp) {
   const content = document.getElementById('standContent');
 
   if (canEdit) {
-    // Admin/Master: full rental form
     content.innerHTML = `
       <div style="padding:0 16px">
-        <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:16px">
           <div style="width:10px;height:10px;border-radius:50%;background:var(--accent-green);box-shadow:0 0 8px var(--accent-green)"></div>
-          <span style="font-size:13px;color:var(--accent-green);font-weight:600">DISPONÍVEL</span>
+          <span style="font-size:13px;color:var(--accent-green);font-weight:700">DISPONÍVEL</span>
         </div>
+
         <div class="input-group-crm dark"><i class="bi bi-building"></i><input type="text" id="rsCompany" placeholder="Nome Empresa" required/></div>
         <div class="input-group-crm dark"><i class="bi bi-tag-fill"></i><input type="text" id="rsNif" placeholder="NIF" required/></div>
         <div class="input-group-crm dark"><i class="bi bi-envelope-fill"></i><input type="email" id="rsEmail" placeholder="Email" required/></div>
         <div class="input-group-crm dark"><i class="bi bi-telephone-fill"></i><input type="tel" id="rsPhone" placeholder="Número de telefone" required/></div>
         <div class="input-group-crm dark"><i class="bi bi-geo-alt-fill"></i><input type="text" id="rsCountry" placeholder="País" value="Angola"/></div>
         <div class="input-group-crm dark"><i class="bi bi-sticky"></i><input type="text" id="rsNotes" placeholder="Notas (opcional)"/></div>
+
         <div style="margin-bottom:14px">
           <div style="font-size:13px;color:var(--text-muted);margin-bottom:8px;font-weight:600">
             <i class="bi bi-paperclip"></i> Documentos
@@ -1832,14 +1872,19 @@ async function openAvailableStand(stand, fp) {
           <input type="file" id="docsInput" multiple accept="image/*,.pdf" style="display:none" onchange="previewDocs(this)"/>
           <div class="doc-grid" id="docPreviewGrid"></div>
         </div>
-        <button class="btn-crm btn-green" onclick="saveRental('${stand.id}','${stand.number}')">
-          <i class="bi bi-floppy-fill"></i> REGISTAR ALUGUEL
-        </button>
+
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button class="btn-crm btn-green" style="flex:2;min-width:140px" onclick="saveRental('${stand.id}','${stand.number}','active')">
+            <i class="bi bi-check-circle-fill"></i> REGISTAR ALUGUEL
+          </button>
+          <button class="btn-crm" style="flex:1;min-width:120px;background:#f07800" onclick="saveRental('${stand.id}','${stand.number}','reserved')">
+            <i class="bi bi-clock-fill"></i> RESERVAR (72h)
+          </button>
+        </div>
       </div>`;
     setupDropZone();
 
   } else if (isCollab) {
-    // Collaborator: view status + notify admin
     content.innerHTML = `
       <div style="padding:16px">
         <div style="display:flex;align-items:center;gap:8px;margin-bottom:20px">
@@ -1855,6 +1900,92 @@ async function openAvailableStand(stand, fp) {
         </button>
       </div>`;
   }
+  showPage('page-stand');
+}
+
+async function openReservedStand(stand, fp) {
+  showLoading(true);
+  const { data: rental } = await _db
+    .from('rentals')
+    .select('*, rental_documents(*)')
+    .eq('stand_id', stand.id)
+    .eq('status', 'reserved')
+    .single();
+  showLoading(false);
+
+  currentRental = rental;
+  document.getElementById('standFloorName').textContent = fp.name;
+  document.getElementById('standTitle').textContent = `STAND ${stand.number}`;
+
+  const canEdit = ['master','admin'].includes(currentProfile?.role);
+
+  // Time remaining
+  const expiry = stand.reserved_until ? new Date(stand.reserved_until) : null;
+  const msLeft  = expiry ? expiry - new Date() : 0;
+  const hLeft   = Math.max(0, Math.floor(msLeft / 3600000));
+  const mLeft   = Math.max(0, Math.floor((msLeft % 3600000) / 60000));
+  const timeStr = expiry ? `${hLeft}h ${mLeft}min restantes` : '—';
+
+  const docsHtml = (rental?.rental_documents || []).map(d =>
+    `<div class="doc-thumb" onclick="openDoc('${d.file_url}')">
+      ${d.file_type?.startsWith('image')
+        ? `<img src="${d.file_url}" alt="${d.file_name}"/>`
+        : `<i class="bi bi-file-earmark-pdf-fill" style="font-size:28px;color:var(--accent-red)"></i>`}
+    </div>`).join('');
+
+  const content = document.getElementById('standContent');
+  content.innerHTML = `
+    <div style="padding:0 16px">
+      <div style="display:flex;align-items:center;gap:10px;background:rgba(240,120,0,.15);border:1px solid #f07800;border-radius:10px;padding:12px 14px;margin-bottom:16px">
+        <i class="bi bi-clock-fill" style="color:#f07800;font-size:20px"></i>
+        <div>
+          <div style="font-weight:700;color:#f07800;font-size:14px">RESERVADA</div>
+          <div style="font-size:12px;color:var(--text-muted)">${timeStr}</div>
+        </div>
+      </div>
+
+      ${canEdit ? `
+        <div class="input-group-crm dark"><i class="bi bi-building"></i><input type="text" id="rsCompany" value="${rental?.company_name||''}" placeholder="Nome Empresa"/></div>
+        <div class="input-group-crm dark"><i class="bi bi-tag-fill"></i><input type="text" id="rsNif" value="${rental?.nif||''}" placeholder="NIF"/></div>
+        <div class="input-group-crm dark"><i class="bi bi-envelope-fill"></i><input type="email" id="rsEmail" value="${rental?.email||''}" placeholder="Email"/></div>
+        <div class="input-group-crm dark"><i class="bi bi-telephone-fill"></i><input type="tel" id="rsPhone" value="${rental?.phone||''}" placeholder="Telefone"/></div>
+        <div class="input-group-crm dark"><i class="bi bi-geo-alt-fill"></i><input type="text" id="rsCountry" value="${rental?.country||'Angola'}" placeholder="País"/></div>
+        <div class="input-group-crm dark"><i class="bi bi-sticky"></i><input type="text" id="rsNotes" value="${rental?.notes||''}" placeholder="Notas"/></div>
+      ` : `
+        <div class="info-row"><i class="bi bi-building"></i>${rental?.company_name||'—'}</div>
+        <div class="info-row"><i class="bi bi-tag-fill"></i>NIF: ${rental?.nif||'—'}</div>
+        <div class="info-row"><i class="bi bi-envelope-fill"></i>${rental?.email||'—'}</div>
+        <div class="info-row"><i class="bi bi-telephone-fill"></i>${rental?.phone||'—'}</div>
+        <div class="info-row"><i class="bi bi-geo-alt-fill"></i>${rental?.country||'—'}</div>
+      `}
+
+      <div style="margin:10px 0 14px">
+        <div style="font-size:13px;color:var(--text-muted);margin-bottom:8px;font-weight:600">
+          <i class="bi bi-paperclip"></i> Documentos
+        </div>
+        ${rental?.rental_documents?.length
+          ? `<div class="doc-grid">${docsHtml}</div>`
+          : `<p style="font-size:13px;color:var(--text-muted)">Sem documentos.</p>`}
+        ${canEdit ? `
+          <button class="btn-crm btn-secondary-crm" style="margin-top:8px" onclick="document.getElementById('addResDocInput').click()">
+            <i class="bi bi-paperclip"></i> ADICIONAR DOCUMENTOS
+          </button>
+          <input type="file" id="addResDocInput" multiple accept="image/*,.pdf" style="display:none" onchange="addDocsToRental(this,'${rental?.id}')"/>
+        ` : ''}
+      </div>
+
+      ${canEdit ? `
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button class="btn-crm btn-green" style="flex:2;min-width:130px" onclick="confirmReservation('${rental?.id}','${stand.id}','${stand.number}')">
+            <i class="bi bi-check-circle-fill"></i> CONFIRMAR ALUGUEL
+          </button>
+          <button class="btn-crm btn-red" style="flex:1;min-width:110px" onclick="cancelReservation('${rental?.id}','${stand.id}','${stand.number}')">
+            <i class="bi bi-x-circle-fill"></i> CANCELAR
+          </button>
+        </div>
+      ` : `<p style="font-size:12px;color:var(--text-muted);margin-top:8px">Contacte o administrador para confirmar ou cancelar esta reserva.</p>`}
+    </div>`;
+
   showPage('page-stand');
 }
 
@@ -1901,7 +2032,7 @@ async function openRentedStand(stand, fp) {
   showPage('page-stand');
 }
 
-async function saveRental(standId, standNumber) {
+async function saveRental(standId, standNumber, type = 'active') {
   const company = document.getElementById('rsCompany')?.value.trim();
   const nif     = document.getElementById('rsNif')?.value.trim();
   const email   = document.getElementById('rsEmail')?.value.trim();
@@ -1909,35 +2040,102 @@ async function saveRental(standId, standNumber) {
   const country = document.getElementById('rsCountry')?.value.trim() || 'Angola';
   const notes   = document.getElementById('rsNotes')?.value.trim();
 
-  if (!company || !nif || !email || !phone) { toast('Preencha todos os campos obrigatórios', 'error'); return; }
-  if (!/\S+@\S+\.\S+/.test(email)) { toast('Email inválido', 'error'); return; }
+  // For reservations allow empty required fields (quick reserve)
+  if (!company || !nif) { toast('Introduza pelo menos o nome da empresa e NIF', 'error'); return; }
+  if (type === 'active') {
+    if (!email || !phone) { toast('Preencha todos os campos obrigatórios', 'error'); return; }
+    if (!/\S+@\S+\.\S+/.test(email)) { toast('Email inválido', 'error'); return; }
+  }
 
   showLoading(true);
+
+  const reservedUntil = type === 'reserved'
+    ? new Date(Date.now() + 72 * 60 * 60 * 1000).toISOString()
+    : null;
+
   const { data: rental, error } = await _db.from('rentals').insert([{
-    stand_id: standId, company_name: company, nif, email, phone, country, notes,
-    created_by: currentUser.id, status: 'active'
+    stand_id: standId,
+    company_name: company,
+    nif, email: email||'', phone: phone||'',
+    country, notes,
+    created_by: currentUser.id,
+    status: type,
+    reserved_until: reservedUntil
   }]).select().single();
 
   if (error) { showLoading(false); toast('Erro: ' + error.message, 'error'); return; }
 
   // Update stand status
-  await _db.from('stands').update({ status: 'rented' }).eq('id', standId);
+  await _db.from('stands').update({
+    status: type,
+    reserved_until: reservedUntil
+  }).eq('id', standId);
 
   // Upload documents
   const files = document.getElementById('docsInput')?.files;
-  if (files && files.length) {
-    for (const file of files) {
-      await uploadRentalDoc(file, rental.id);
-    }
+  if (files?.length) {
+    for (const file of files) await uploadRentalDoc(file, rental.id);
   }
 
   showLoading(false);
-  toast('Aluguel registado com sucesso!', 'success');
-  await logActivity('Registou aluguel', 'rental', rental.id, currentProject?.id, { company, stand: standNumber });
-  await sendNotificationToAdmins(`Stand ${standNumber} alugada a ${company}`);
+
+  if (type === 'reserved') {
+    toast(`Stand ${standNumber} reservada por 72 horas!`, 'success');
+    await logActivity('Reservou stand', 'rental', rental.id, currentProject?.id, { company, stand: standNumber });
+    await sendNotificationToAdmins(`Stand ${standNumber} reservada a ${company} por 72h`);
+  } else {
+    toast(`Aluguel da Stand ${standNumber} registado!`, 'success');
+    await logActivity('Registou aluguel', 'rental', rental.id, currentProject?.id, { company, stand: standNumber });
+    await sendNotificationToAdmins(`Stand ${standNumber} alugada a ${company}`);
+  }
+
   goBack();
-  // Refresh floor plan
-  selectFloorPlan(currentFP.id, document.querySelector('.floor-btn.active-mode') || document.querySelector('.floor-btn'));
+  const activeBtn = document.querySelector('#floorPlanTabsWrap .floor-btn[style*="accent-purple"]') || document.querySelector('#floorPlanTabsWrap .floor-btn');
+  if (activeBtn) activeBtn.click();
+}
+
+async function confirmReservation(rentalId, standId, standNumber) {
+  // Update current field values if admin edited them
+  const company = document.getElementById('rsCompany')?.value.trim();
+  const nif     = document.getElementById('rsNif')?.value.trim();
+  const email   = document.getElementById('rsEmail')?.value.trim();
+  const phone   = document.getElementById('rsPhone')?.value.trim();
+  const country = document.getElementById('rsCountry')?.value.trim() || 'Angola';
+  const notes   = document.getElementById('rsNotes')?.value.trim();
+
+  if (!email || !phone) { toast('Preencha email e telefone para confirmar o aluguel', 'error'); return; }
+  if (!/\S+@\S+\.\S+/.test(email)) { toast('Email inválido', 'error'); return; }
+
+  showLoading(true);
+  await _db.from('rentals').update({
+    status: 'active',
+    reserved_until: null,
+    company_name: company, nif, email, phone, country, notes
+  }).eq('id', rentalId);
+
+  await _db.from('stands').update({ status: 'rented', reserved_until: null }).eq('id', standId);
+  showLoading(false);
+
+  toast(`Stand ${standNumber} alugada com sucesso!`, 'success');
+  await logActivity('Confirmou aluguel de reserva', 'rental', rentalId, currentProject?.id, { stand: standNumber });
+  await sendNotificationToAdmins(`Reserva da Stand ${standNumber} confirmada como aluguel`);
+  goBack();
+  const activeBtn = document.querySelector('#floorPlanTabsWrap .floor-btn[style*="accent-purple"]') || document.querySelector('#floorPlanTabsWrap .floor-btn');
+  if (activeBtn) activeBtn.click();
+}
+
+async function cancelReservation(rentalId, standId, standNumber) {
+  showConfirm('Cancelar Reserva', `Cancelar a reserva da Stand ${standNumber}? A stand ficará disponível.`, async () => {
+    showLoading(true);
+    await _db.from('rentals').update({ status: 'cancelled', cancelled_by: currentUser.id, cancelled_at: new Date().toISOString() }).eq('id', rentalId);
+    await _db.from('stands').update({ status: 'available', reserved_until: null }).eq('id', standId);
+    showLoading(false);
+    toast('Reserva cancelada', 'info');
+    await logActivity('Cancelou reserva', 'rental', rentalId, currentProject?.id, { stand: standNumber });
+    goBack();
+    const activeBtn = document.querySelector('#floorPlanTabsWrap .floor-btn[style*="accent-purple"]') || document.querySelector('#floorPlanTabsWrap .floor-btn');
+    if (activeBtn) activeBtn.click();
+  });
 }
 
 async function cancelRental(rentalId, standId, standNumber) {
@@ -1963,15 +2161,46 @@ async function addDocsToRental(input, rentalId) {
 }
 
 async function uploadRentalDoc(file, rentalId) {
-  const ext = file.name.split('.').pop();
-  const path = `${rentalId}/${Date.now()}.${ext}`;
-  const { data: upData, error: upErr } = await _db.storage.from('documents').upload(path, file);
-  if (upErr) { toast('Erro ao carregar ficheiro: ' + upErr.message, 'error'); return; }
-  const { data: { publicUrl } } = _db.storage.from('documents').getPublicUrl(path);
-  await _db.from('rental_documents').insert([{
-    rental_id: rentalId, file_name: file.name, file_url: publicUrl,
-    file_type: file.type, uploaded_by: currentUser.id
-  }]);
+  try {
+    const ext  = file.name.split('.').pop().toLowerCase();
+    const safe = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+    const path = `rentals/${rentalId}/${Date.now()}_${safe}`;
+
+    const { data: upData, error: upErr } = await _db.storage
+      .from('documents').upload(path, file, { upsert: true, contentType: file.type });
+
+    if (upErr) {
+      toast(`Erro no upload: ${upErr.message}`, 'error');
+      // Store without file — save metadata only if upload fails
+      await _db.from('rental_documents').insert([{
+        rental_id: rentalId, file_name: file.name,
+        file_url: '', file_type: file.type,
+        uploaded_by: currentUser.id
+      }]);
+      return;
+    }
+
+    // Get public URL (bucket must be public) OR signed URL (private bucket)
+    let fileUrl = '';
+    const { data: pubData } = _db.storage.from('documents').getPublicUrl(path);
+    if (pubData?.publicUrl && !pubData.publicUrl.includes('undefined')) {
+      fileUrl = pubData.publicUrl;
+    } else {
+      // Fallback: signed URL valid 10 years
+      const { data: signed } = await _db.storage.from('documents')
+        .createSignedUrl(path, 60 * 60 * 24 * 3650);
+      fileUrl = signed?.signedUrl || '';
+    }
+
+    await _db.from('rental_documents').insert([{
+      rental_id: rentalId, file_name: file.name,
+      file_url: fileUrl, file_type: file.type,
+      uploaded_by: currentUser.id
+    }]);
+  } catch (e) {
+    console.error('uploadRentalDoc error:', e);
+    toast('Erro ao carregar ficheiro', 'error');
+  }
 }
 
 /* ═══ SAVE PROJECT ═══ */
@@ -2083,12 +2312,13 @@ function renderMyList(rentals) {
     const stand = r.stands;
     const proj = stand?.floor_plans?.projects;
     return `<div class="client-card" onclick="openRentalDetail('${r.id}')">
-      <div class="stand-badge ${r.status==='active'?'':'rented'}">S${stand?.number || '??'}</div>
+      <div class="stand-badge ${r.status==='active'?'':r.status==='reserved'?'':'rented'}
+        " style="${r.status==='reserved'?'background:#f07800':''}">S${stand?.number || '??'}</div>
       <div class="client-info">
         <h6>${r.company_name}</h6>
         <p>${stand?.floor_plans?.name || ''} • ${proj?.name || ''}</p>
-        <p style="color:${r.status==='active'?'var(--accent-green)':'var(--accent-red)'}">
-          ${r.status === 'active' ? 'Activo' : 'Cancelado'}
+        <p style="color:${r.status==='active'?'var(--accent-green)':r.status==='reserved'?'#f07800':'var(--accent-red)'}">
+          ${r.status === 'active' ? 'Activo' : r.status === 'reserved' ? '⏱ Reservado' : 'Cancelado'}
         </p>
       </div>
       <i class="bi bi-chevron-right" style="color:var(--text-label);margin-left:auto"></i>
@@ -2716,7 +2946,18 @@ function roleLabel(role) {
   return { master: 'Master', admin: 'Administrador', collaborator: 'Colaborador' }[role] || role;
 }
 
-function openDoc(url) { window.open(url, '_blank'); }
+async function openDoc(url, path) {
+  if (url && url.startsWith('http')) {
+    window.open(url, '_blank');
+  } else if (path) {
+    // Generate a fresh signed URL
+    const { data } = await _db.storage.from('documents').createSignedUrl(path, 3600);
+    if (data?.signedUrl) window.open(data.signedUrl, '_blank');
+    else toast('Não foi possível abrir o ficheiro', 'error');
+  } else {
+    toast('URL do ficheiro indisponível', 'error');
+  }
+}
 
 function previewLogo(input) {
   const file = input.files[0]; if (!file) return;
