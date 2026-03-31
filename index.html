@@ -256,8 +256,32 @@ body{font-family:var(--font-body);color:var(--text-primary);-webkit-font-smoothi
 .grid-cell.corridor{background:#fff !important}
 .grid-cell.stand-cell{background:var(--accent-green) !important}
 .grid-cell.stand-rented{background:var(--accent-red) !important}
-.grid-cell.stand-reserved{background:#f07800 !important}
-.counter-box.orange{background:#f07800}
+.grid-cell.stand-reserved{background:#e6b800 !important}
+.counter-box.orange{background:#e6b800}
+.paid-check-wrap{
+  display:flex;align-items:center;gap:10px;
+  background:rgba(0,180,80,.1);border:1px solid rgba(0,180,80,.3);
+  border-radius:10px;padding:10px 14px;margin-bottom:10px;cursor:pointer;
+  transition:var(--transition);
+}
+.paid-check-wrap:hover{background:rgba(0,180,80,.18)}
+.paid-check-wrap input[type=checkbox]{
+  width:20px;height:20px;accent-color:var(--accent-green);
+  cursor:pointer;flex-shrink:0;
+}
+.paid-check-wrap.is-paid{
+  background:rgba(0,180,80,.2);border-color:var(--accent-green);
+}
+.paid-tag{
+  display:inline-flex;align-items:center;gap:4px;
+  background:var(--accent-green);border-radius:20px;
+  padding:2px 10px;font-size:11px;font-weight:700;color:#fff;
+}
+.reserved-tag{
+  display:inline-flex;align-items:center;gap:4px;
+  background:#e6b800;border-radius:20px;color:#000;
+  padding:2px 10px;font-size:11px;font-weight:700;
+}
 .grid-cell.stand-selecting{background:rgba(104,50,227,.7) !important}
 .grid-cell:hover{filter:brightness(1.3)}
 .stand-number-label{
@@ -345,6 +369,7 @@ body{font-family:var(--font-body);color:var(--text-primary);-webkit-font-smoothi
   font-family:var(--font-display);font-weight:700;font-size:13px;flex-shrink:0;
 }
 .client-card .stand-badge.rented{background:var(--accent-red)}
+.client-card .stand-badge.reserved{background:#e6b800;color:#000}
 .client-info h6{font-weight:600;font-size:14px;margin-bottom:2px}
 .client-info p{font-size:12px;color:var(--text-muted)}
 
@@ -1608,9 +1633,10 @@ function renderFloorPlanBuilder(fp, canEdit) {
     </div>`;
   }
 
-  // Stands counter
+  // Stands counter — always render all 3 boxes
   html += `<div class="stands-counter" id="standCounter-${fp.id}">
     <div class="counter-box green"><div class="count" id="freeCount-${fp.id}">—</div><div class="label">LIVRES</div></div>
+    <div class="counter-box orange"><div class="count" id="reservedCount-${fp.id}">—</div><div class="label">RESERVADAS</div></div>
     <div class="counter-box red"><div class="count" id="rentedCount-${fp.id}">—</div><div class="label">VENDIDOS</div></div>
   </div>`;
 
@@ -1877,7 +1903,7 @@ async function openAvailableStand(stand, fp) {
           <button class="btn-crm btn-green" style="flex:2;min-width:140px" onclick="saveRental('${stand.id}','${stand.number}','active')">
             <i class="bi bi-check-circle-fill"></i> REGISTAR ALUGUEL
           </button>
-          <button class="btn-crm" style="flex:1;min-width:120px;background:#f07800" onclick="saveRental('${stand.id}','${stand.number}','reserved')">
+          <button class="btn-crm" style="flex:1;min-width:120px;background:#e6b800" onclick="saveRental('${stand.id}','${stand.number}','reserved')">
             <i class="bi bi-clock-fill"></i> RESERVAR (72h)
           </button>
         </div>
@@ -1936,10 +1962,10 @@ async function openReservedStand(stand, fp) {
   const content = document.getElementById('standContent');
   content.innerHTML = `
     <div style="padding:0 16px">
-      <div style="display:flex;align-items:center;gap:10px;background:rgba(240,120,0,.15);border:1px solid #f07800;border-radius:10px;padding:12px 14px;margin-bottom:16px">
-        <i class="bi bi-clock-fill" style="color:#f07800;font-size:20px"></i>
+      <div style="display:flex;align-items:center;gap:10px;background:rgba(230,184,0,.15);border:1px solid #e6b800;border-radius:10px;padding:12px 14px;margin-bottom:16px">
+        <i class="bi bi-clock-fill" style="color:#e6b800;font-size:20px"></i>
         <div>
-          <div style="font-weight:700;color:#f07800;font-size:14px">RESERVADA</div>
+          <div style="font-weight:700;color:#e6b800;font-size:14px">RESERVADA</div>
           <div style="font-size:12px;color:var(--text-muted)">${timeStr}</div>
         </div>
       </div>
@@ -2283,7 +2309,7 @@ async function loadMyList() {
   showLoading(true);
   const { data: rentals } = await _db
     .from('rentals')
-    .select('*, stands(number, floor_plan_id, floor_plans(name, project_id, projects(name)))')
+    .select('*, stands(id, number, floor_plan_id, floor_plans(name, project_id, projects(name)))')
     .order('created_at', { ascending: false });
   showLoading(false);
   window._allRentals = rentals || [];
@@ -2304,56 +2330,151 @@ function filterList() {
 
 function renderMyList(rentals) {
   const el = document.getElementById('myListContent');
+  const canEdit = ['master','admin'].includes(currentProfile?.role);
+
   if (!rentals.length) {
     el.innerHTML = `<p style="padding:16px;color:var(--text-muted)">Nenhum resultado encontrado.</p>`;
     return;
   }
+
   el.innerHTML = rentals.map(r => {
     const stand = r.stands;
-    const proj = stand?.floor_plans?.projects;
-    return `<div class="client-card" onclick="openRentalDetail('${r.id}')">
-      <div class="stand-badge ${r.status==='active'?'':r.status==='reserved'?'':'rented'}
-        " style="${r.status==='reserved'?'background:#f07800':''}">S${stand?.number || '??'}</div>
-      <div class="client-info">
-        <h6>${r.company_name}</h6>
-        <p>${stand?.floor_plans?.name || ''} • ${proj?.name || ''}</p>
-        <p style="color:${r.status==='active'?'var(--accent-green)':r.status==='reserved'?'#f07800':'var(--accent-red)'}">
-          ${r.status === 'active' ? 'Activo' : r.status === 'reserved' ? '⏱ Reservado' : 'Cancelado'}
-        </p>
-      </div>
-      <i class="bi bi-chevron-right" style="color:var(--text-label);margin-left:auto"></i>
-    </div>`;
+    const proj  = stand?.floor_plans?.projects;
+    const isReserved = r.status === 'reserved';
+    const isActive   = r.status === 'active';
+    const isPaid     = r.paid === true;
+
+    // Time remaining for reservations
+    let timeInfo = '';
+    if (isReserved && r.reserved_until) {
+      const msLeft = new Date(r.reserved_until) - new Date();
+      if (msLeft > 0) {
+        const h = Math.floor(msLeft / 3600000);
+        const m = Math.floor((msLeft % 3600000) / 60000);
+        timeInfo = `<span style="font-size:11px;color:#e6b800"><i class="bi bi-clock"></i> ${h}h ${m}min restantes</span>`;
+      } else {
+        timeInfo = `<span style="font-size:11px;color:var(--accent-red)"><i class="bi bi-clock"></i> Expirada</span>`;
+      }
+    }
+
+    // Status badge color
+    const badgeStyle  = isActive ? '' : isReserved ? 'background:#e6b800;color:#000' : 'background:var(--accent-red)';
+    const statusColor = isActive ? 'var(--accent-green)' : isReserved ? '#e6b800' : 'var(--accent-red)';
+    const statusText  = isActive ? (isPaid ? '✓ Pago' : 'Activo') : isReserved ? '⏱ Reservado' : 'Cancelado';
+
+    // Paid checkbox — only for reserved items, only for admin
+    const paidRow = isReserved && canEdit ? `
+      <div class="paid-check-wrap ${isPaid ? 'is-paid' : ''}" onclick="event.stopPropagation();togglePaid('${r.id}',${isPaid})" style="margin-top:8px;margin-bottom:0">
+        <input type="checkbox" ${isPaid ? 'checked' : ''} onclick="event.stopPropagation();togglePaid('${r.id}',${isPaid})"/>
+        <div>
+          <div style="font-size:13px;font-weight:600">${isPaid ? '✓ Pagamento confirmado' : 'Marcar como pago'}</div>
+          <div style="font-size:11px;color:var(--text-muted)">Confirma o pagamento da reserva</div>
+        </div>
+        ${isPaid ? '<span class="paid-tag"><i class="bi bi-check-circle-fill"></i> PAGO</span>' : ''}
+      </div>` : '';
+
+    return `
+      <div class="client-card" style="flex-direction:column;align-items:stretch;gap:8px" onclick="openRentalDetail('${r.id}')">
+        <div style="display:flex;align-items:center;gap:12px">
+          <div class="stand-badge" style="${badgeStyle}">S${stand?.number || '??'}</div>
+          <div class="client-info" style="flex:1;min-width:0">
+            <h6 style="display:flex;align-items:center;gap:6px">
+              ${r.company_name}
+              ${isPaid && isReserved ? '<span class="paid-tag"><i class="bi bi-check-circle-fill"></i> PAGO</span>' : ''}
+            </h6>
+            <p>${stand?.floor_plans?.name || ''} • ${proj?.name || ''}</p>
+            <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+              <p style="color:${statusColor};margin:0">${statusText}</p>
+              ${timeInfo}
+            </div>
+          </div>
+          <i class="bi bi-chevron-right" style="color:var(--text-label);flex-shrink:0"></i>
+        </div>
+        ${paidRow}
+      </div>`;
   }).join('');
+}
+
+async function togglePaid(rentalId, currentPaid) {
+  const newPaid = !currentPaid;
+  const { error } = await _db.from('rentals').update({ paid: newPaid }).eq('id', rentalId);
+  if (error) { toast('Erro: ' + error.message, 'error'); return; }
+  // Update local cache
+  const r = (window._allRentals || []).find(x => x.id === rentalId);
+  if (r) r.paid = newPaid;
+  toast(newPaid ? 'Marcado como pago ✓' : 'Pagamento desmarcado', newPaid ? 'success' : 'info');
+  filterList();
 }
 
 async function openRentalDetail(rentalId) {
   showLoading(true);
   const { data: rental } = await _db
     .from('rentals')
-    .select('*, stands(number, floor_plans(name, projects(name))), rental_documents(*)')
+    .select('*, stands(id, number, floor_plans(name, projects(name))), rental_documents(*)')
     .eq('id', rentalId).single();
   showLoading(false);
   currentRental = rental;
 
-  const canEdit = ['master','admin'].includes(currentProfile?.role);
-  const stand = rental?.stands;
-  const fp = stand?.floor_plans;
-  const proj = fp?.projects;
+  const canEdit   = ['master','admin'].includes(currentProfile?.role);
+  const stand     = rental?.stands;
+  const fp        = stand?.floor_plans;
+  const proj      = fp?.projects;
+  const isReserved = rental?.status === 'reserved';
+  const isActive   = rental?.status === 'active';
+  const isPaid     = rental?.paid === true;
 
+  // Time remaining for reservation
+  let timeBanner = '';
+  if (isReserved && rental?.reserved_until) {
+    const msLeft  = new Date(rental.reserved_until) - new Date();
+    const expired = msLeft <= 0;
+    const h = Math.max(0, Math.floor(msLeft / 3600000));
+    const m = Math.max(0, Math.floor((msLeft % 3600000) / 60000));
+    timeBanner = `
+      <div style="display:flex;align-items:center;gap:10px;
+        background:${expired ? 'rgba(232,20,22,.12)' : 'rgba(230,184,0,.12)'};
+        border:1px solid ${expired ? 'var(--accent-red)' : '#e6b800'};
+        border-radius:12px;padding:12px 16px;margin:0 16px 14px">
+        <i class="bi bi-clock-fill" style="color:${expired ? 'var(--accent-red)' : '#e6b800'};font-size:22px"></i>
+        <div>
+          <div style="font-weight:700;color:${expired ? 'var(--accent-red)' : '#e6b800'};font-size:14px">
+            ${expired ? 'RESERVA EXPIRADA' : 'RESERVADA'}
+          </div>
+          <div style="font-size:12px;color:var(--text-muted)">
+            ${expired ? 'Esta reserva expirou — stand será libertada' : `${h}h ${m}min restantes`}
+          </div>
+        </div>
+        ${isPaid ? '<span class="paid-tag" style="margin-left:auto"><i class="bi bi-check-circle-fill"></i> PAGO</span>' : ''}
+      </div>`;
+  } else if (isActive && isPaid) {
+    timeBanner = `
+      <div style="display:flex;align-items:center;gap:10px;
+        background:rgba(40,167,69,.12);border:1px solid var(--accent-green);
+        border-radius:12px;padding:12px 16px;margin:0 16px 14px">
+        <i class="bi bi-check-circle-fill" style="color:var(--accent-green);font-size:22px"></i>
+        <div style="font-weight:700;color:var(--accent-green);font-size:14px">PAGO ✓</div>
+      </div>`;
+  }
+
+  // Docs
   const docsHtml = (rental?.rental_documents || []).map(d =>
     `<div class="doc-thumb" onclick="openDoc('${d.file_url}')">
-      ${d.file_type?.startsWith('image') ? `<img src="${d.file_url}" alt="${d.file_name}"/>` : `<i class="bi bi-file-earmark-pdf-fill" style="font-size:30px;color:var(--accent-red)"></i>`}
+      ${d.file_type?.startsWith('image')
+        ? `<img src="${d.file_url}" alt="${d.file_name}"/>`
+        : `<i class="bi bi-file-earmark-pdf-fill" style="font-size:28px;color:var(--accent-red)"></i>`}
       ${canEdit ? `<div class="del-btn" onclick="event.stopPropagation();deleteDoc('${d.id}','${rentalId}')"><i class="bi bi-x"></i></div>` : ''}
-    </div>`
-  ).join('');
+    </div>`).join('');
 
   const el = document.getElementById('rentalDetailContent');
   el.innerHTML = `
-    <div style="padding:0 16px;margin-bottom:4px">
+    <div style="padding:0 16px 6px">
       <div class="tag-badge"><i class="bi bi-layers-fill"></i>${proj?.name || '—'}</div>
       <div style="font-size:13px;color:var(--text-muted);margin-top:6px">${fp?.name || ''} • Stand ${stand?.number || ''}</div>
     </div>
     <div class="page-title" style="font-size:22px">${rental?.company_name}</div>
+
+    ${timeBanner}
+
     <div style="padding:0 16px">
       ${canEdit ? `
         <div class="input-group-crm dark"><i class="bi bi-building"></i><input type="text" id="rdCompany" value="${rental?.company_name||''}"/></div>
@@ -2368,32 +2489,100 @@ async function openRentalDetail(rentalId) {
         <div class="info-row"><i class="bi bi-geo-alt-fill"></i>${rental?.country||'—'}</div>
       `}
     </div>
-    <div style="padding:0 16px;margin-top:8px">
-      <div style="font-size:13px;color:var(--text-muted);margin-bottom:8px;font-weight:600">DOCUMENTOS</div>
-      ${rental?.rental_documents?.length ? `<div class="doc-grid">${docsHtml}</div>` : `<p style="color:var(--text-muted);font-size:13px">Sem documentos.</p>`}
+
+    <div style="padding:0 16px;margin-top:10px">
+      <div style="font-size:13px;color:var(--text-muted);margin-bottom:8px;font-weight:600">
+        <i class="bi bi-paperclip"></i> DOCUMENTOS
+      </div>
+      ${rental?.rental_documents?.length
+        ? `<div class="doc-grid">${docsHtml}</div>`
+        : `<p style="color:var(--text-muted);font-size:13px">Sem documentos.</p>`}
+
       ${canEdit ? `
-        <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">
-          <button class="btn-crm btn-green" style="flex:1;min-width:120px" onclick="saveRentalEdits('${rental?.id}')">
-            <i class="bi bi-floppy-fill"></i> GUARDAR
+        <button class="btn-crm btn-secondary-crm" style="margin-top:10px" onclick="document.getElementById('rdDocInput').click()">
+          <i class="bi bi-paperclip"></i> ADICIONAR DOCUMENTOS
+        </button>
+        <input type="file" id="rdDocInput" multiple accept="image/*,.pdf" style="display:none"
+          onchange="addDocsToRental(this,'${rental?.id}')"/>
+      ` : ''}
+    </div>
+
+    ${canEdit ? `
+    <div style="padding:12px 16px 0">
+
+      ${isReserved ? `
+        <!-- Paid checkbox for reservation -->
+        <div class="paid-check-wrap ${isPaid ? 'is-paid' : ''}" onclick="togglePaidDetail('${rental?.id}',${isPaid})">
+          <input type="checkbox" ${isPaid ? 'checked' : ''} onclick="event.stopPropagation();togglePaidDetail('${rental?.id}',${isPaid})"/>
+          <div>
+            <div style="font-size:14px;font-weight:600">${isPaid ? '✓ Pagamento confirmado' : 'Marcar como pago'}</div>
+            <div style="font-size:12px;color:var(--text-muted)">Confirma o recebimento do pagamento</div>
+          </div>
+          ${isPaid ? '<span class="paid-tag" style="margin-left:auto"><i class="bi bi-check-circle-fill"></i> PAGO</span>' : ''}
+        </div>
+
+        <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap">
+          <button class="btn-crm btn-green" style="flex:1" onclick="saveRentalEdits('${rental?.id}');confirmReservationFromList('${rental?.id}','${stand?.id}','${stand?.number}')">
+            <i class="bi bi-check-circle-fill"></i> CONFIRMAR ALUGUEL
           </button>
-          <button class="btn-crm btn-secondary-crm" style="flex:1;min-width:120px" onclick="document.getElementById('rdDocInput').click()">
-            <i class="bi bi-paperclip"></i> ANEXAR
+          <button class="btn-crm btn-red" style="flex:1" onclick="cancelReservation('${rental?.id}','${stand?.id}','${stand?.number}')">
+            <i class="bi bi-x-circle-fill"></i> CANCELAR RESERVA
           </button>
         </div>
-        <input type="file" id="rdDocInput" multiple accept="image/*,.pdf" style="display:none" onchange="addDocsToRental(this,'${rental?.id}')"/>
-        ${rental?.status === 'active' ? `
-          <button class="btn-crm btn-red" style="margin-top:8px" onclick="cancelRentalFromList('${rental?.id}','${rental?.stands?.id}','${stand?.number}')">
-            <i class="bi bi-x-circle-fill"></i> CANCELAR ALUGUEL
-          </button>` : ''}
-      ` : `
-        <p style="font-size:12px;color:var(--text-muted);margin-top:10px">Para alterações, contacte o administrador.</p>
-        <button class="btn-crm btn-secondary-crm" style="margin-top:8px" onclick="requestChange('${rental?.id}')">
-          <i class="bi bi-envelope-fill"></i> SOLICITAR ALTERAÇÃO
+        <button class="btn-crm btn-secondary-crm" style="margin-top:8px" onclick="saveRentalEdits('${rental?.id}')">
+          <i class="bi bi-floppy-fill"></i> GUARDAR ALTERAÇÕES
         </button>
-      `}
-    </div>`;
+      ` : isActive ? `
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button class="btn-crm btn-green" style="flex:1" onclick="saveRentalEdits('${rental?.id}')">
+            <i class="bi bi-floppy-fill"></i> GUARDAR
+          </button>
+        </div>
+        <button class="btn-crm btn-red" style="margin-top:8px" onclick="cancelRentalFromList('${rental?.id}','${stand?.id}','${stand?.number}')">
+          <i class="bi bi-x-circle-fill"></i> CANCELAR ALUGUEL
+        </button>
+      ` : `<p style="color:var(--text-muted);font-size:13px">Aluguel cancelado.</p>`}
+    </div>
+    ` : `
+    <div style="padding:12px 16px 0">
+      <p style="font-size:12px;color:var(--text-muted)">Para alterações, contacte o administrador.</p>
+      <button class="btn-crm btn-secondary-crm" style="margin-top:8px" onclick="requestChange('${rental?.id}')">
+        <i class="bi bi-envelope-fill"></i> SOLICITAR ALTERAÇÃO
+      </button>
+    </div>
+    `}`;
 
   showPage('page-rental-detail');
+}
+
+async function togglePaidDetail(rentalId, currentPaid) {
+  const newPaid = !currentPaid;
+  await _db.from('rentals').update({ paid: newPaid }).eq('id', rentalId);
+  const r = (window._allRentals || []).find(x => x.id === rentalId);
+  if (r) r.paid = newPaid;
+  toast(newPaid ? 'Marcado como pago ✓' : 'Pagamento desmarcado', newPaid ? 'success' : 'info');
+  openRentalDetail(rentalId); // refresh view
+}
+
+async function confirmReservationFromList(rentalId, standId, standNumber) {
+  const company = document.getElementById('rdCompany')?.value.trim();
+  const nif     = document.getElementById('rdNif')?.value.trim();
+  const email   = document.getElementById('rdEmail')?.value.trim();
+  const phone   = document.getElementById('rdPhone')?.value.trim();
+  const country = document.getElementById('rdCountry')?.value.trim() || 'Angola';
+  if (!email || !phone) { toast('Preencha email e telefone para confirmar', 'error'); return; }
+  showLoading(true);
+  await _db.from('rentals').update({
+    status: 'active', reserved_until: null,
+    company_name: company, nif, email, phone, country
+  }).eq('id', rentalId);
+  await _db.from('stands').update({ status: 'rented', reserved_until: null }).eq('id', standId);
+  showLoading(false);
+  toast(`Stand ${standNumber} confirmada como aluguel!`, 'success');
+  await logActivity('Confirmou aluguel (My List)', 'rental', rentalId, null, { stand: standNumber });
+  await sendNotificationToAdmins(`Reserva Stand ${standNumber} confirmada como aluguel`);
+  loadMyList();
+  goBack();
 }
 
 async function saveRentalEdits(rentalId) {
